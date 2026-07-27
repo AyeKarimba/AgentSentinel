@@ -1,0 +1,107 @@
+import Foundation
+
+public enum Urgency: String, Codable, Sendable {
+    case normal
+    case urgent
+}
+
+/// Why a session is waiting on the user. Drives both notification tier and label text.
+public enum WaitReason: String, Codable, Sendable {
+    /// From the `Stop` hook — Claude finished its turn.
+    case turnComplete = "turn_complete"
+    /// From `Notification` with `notification_type == "idle_prompt"`.
+    case idlePrompt = "idle_prompt"
+    /// From `Notification` with any other type. Permission requests land here, and so do
+    /// notification types Claude Code may add later — unknown means urgent, not ignored.
+    case permission = "permission"
+
+    public var urgency: Urgency {
+        self == .turnComplete ? .normal : .urgent
+    }
+
+    public var label: String {
+        switch self {
+        case .turnComplete: return "finished"
+        case .idlePrompt: return "waiting for input"
+        case .permission: return "needs permission"
+        }
+    }
+}
+
+public enum SessionState: String, Codable, Sendable {
+    case working
+    case waiting
+}
+
+public struct SessionRecord: Codable, Equatable, Sendable {
+    public var sessionId: String
+    public var tty: String
+    public var pid: Int32
+    public var cwd: String
+    public var state: SessionState
+    public var reason: WaitReason?
+    /// Unix time the session entered its current state. Preserved across reason upgrades so
+    /// "waiting 4m" and the escalation timer both measure from the original wait.
+    public var since: Double
+    /// Unix time the current `reason` was set, when that is later than `since`.
+    ///
+    /// Exists because preserving `since` across an upgrade — right for the elapsed label — is
+    /// wrong for "have you seen this". A turn completion you glanced at and left can become a
+    /// permission request a minute later; measured from `since`, your earlier visit would
+    /// vouch for information that did not exist when you made it, and the tab would drop out
+    /// of the badge while genuinely blocked. Optional so records from an older build decode.
+    public var reasonSince: Double?
+    public var notified: Bool
+    public var escalated: Bool
+    /// `Stop` ships this inline, so the richer label costs nothing to support.
+    public var lastAssistantMessage: String?
+
+    public init(sessionId: String,
+                tty: String,
+                pid: Int32,
+                cwd: String,
+                state: SessionState,
+                reason: WaitReason? = nil,
+                since: Double,
+                reasonSince: Double? = nil,
+                notified: Bool = false,
+                escalated: Bool = false,
+                lastAssistantMessage: String? = nil) {
+        self.sessionId = sessionId
+        self.tty = tty
+        self.pid = pid
+        self.cwd = cwd
+        self.state = state
+        self.reason = reason
+        self.since = since
+        self.reasonSince = reasonSince
+        self.notified = notified
+        self.escalated = escalated
+        self.lastAssistantMessage = lastAssistantMessage
+    }
+
+    /// Derived rather than stored, so it can never drift from `cwd`.
+    public var project: String {
+        let name = URL(fileURLWithPath: cwd).lastPathComponent
+        return name.isEmpty ? cwd : name
+    }
+
+    public var urgency: Urgency { reason?.urgency ?? .normal }
+
+    /// The moment this tab last had something new to say — the wait start, or the later moment
+    /// its reason changed. What "have you looked at it" is measured against; `since` is what
+    /// the elapsed label is measured against, and the two deliberately differ after an upgrade.
+    public var attentionSince: Double { max(since, reasonSince ?? since) }
+
+    public func elapsed(now: Double) -> Double { max(0, now - since) }
+
+    /// "MacTerminalNavigator — needs permission · 12s"
+    public func summary(now: Double) -> String {
+        let detail = reason?.label ?? "working"
+        return "\(project) — \(detail) · \(Elapsed.short(elapsed(now: now)))"
+    }
+
+    /// Key used for tab-scoped mute: survives restarting Claude in the same tab and
+    /// directory, which is the behaviour "mute this terminal" implies.
+    public var tabMuteKey: String { "\(tty)|\(cwd)" }
+}
