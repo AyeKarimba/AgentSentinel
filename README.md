@@ -7,23 +7,15 @@ Run Claude Code in six tabs and the hard part stops being the work — it's noti
 them has been sitting on a permission prompt for ten minutes while you watched a different one
 think. This puts that in the menu bar.
 
-<!-- Screenshot: docs/screenshot.png — the dropdown open, with a few coloured rows. -->
-<img src="docs/screenshot.png" alt="TerminalNavigator's menu, showing sessions in red, amber, grey and purple" width="420">
+<img src="docs/screenshot.png" alt="TerminalNavigator's menu: two tabs needing attention in red, one already-opened in grey, and one still working in purple" width="430">
 
-```
- >_ 2 · 4m          <- two tabs need you; the oldest has waited 4 minutes
+Colour answers *have you dealt with this*, not *what is it doing* — and the menu explains
+itself, so nobody has to memorise it:
 
- ● webapp            4m   needs your permission
- ● api               2m   Should I also update the tests?
- ● dotfiles         18m   you've opened it; still waiting on your reply
- ○ sandbox          31s   working
-```
+<img src="docs/legend.png" alt="The App Legend submenu, listing every colour and marker with its meaning" width="470">
 
-Colour answers *have you dealt with this*, not *what is it doing*. Red is a blocking request
-you haven't opened, amber a finished turn you haven't opened, grey something you've looked at
-but not answered, purple a session still working. Open a tab and its row goes quiet — the badge
-moves on to the next one and disappears when nothing is left. There's a full **App Legend** in
-the menu.
+Open a tab and its row goes quiet — the badge moves to the next one, and disappears once
+nothing is left waiting on you.
 
 ## Requirements
 
