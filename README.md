@@ -7,6 +7,9 @@ Run Claude Code in six tabs and the hard part stops being the work — it's noti
 them has been sitting on a permission prompt for ten minutes while you watched a different one
 think. This puts that in the menu bar.
 
+<!-- Screenshot: docs/screenshot.png — the dropdown open, with a few coloured rows. -->
+<img src="docs/screenshot.png" alt="TerminalNavigator's menu, showing sessions in red, amber, grey and purple" width="420">
+
 ```
  >_ 2 · 4m          <- two tabs need you; the oldest has waited 4 minutes
 
@@ -34,37 +37,48 @@ the menu.
 ```sh
 git clone https://github.com/AyeKarimba/TerminalNavigator.git
 cd TerminalNavigator
-swift build -c release
+make install
 ```
 
-Register the hooks in `~/.claude/settings.json`. Point every command at the `tnav` binary you
-just built (use the absolute path):
+That's it. It builds `TerminalNavigator.app`, installs it to `/Applications`, registers the
+Claude Code hooks, starts it at login, and launches it. The `>_` icon appears in your menu bar.
 
-```json
-{
-  "hooks": {
-    "SessionStart":     [{ "hooks": [{ "type": "command", "command": "/absolute/path/to/.build/release/tnav hook" }] }],
-    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "/absolute/path/to/.build/release/tnav hook" }] }],
-    "Notification":     [{ "hooks": [{ "type": "command", "command": "/absolute/path/to/.build/release/tnav hook" }] }],
-    "Stop":             [{ "hooks": [{ "type": "command", "command": "/absolute/path/to/.build/release/tnav hook" }] }],
-    "SessionEnd":       [{ "hooks": [{ "type": "command", "command": "/absolute/path/to/.build/release/tnav hook" }] }]
-  }
-}
-```
-
-Then start the menu bar app:
+To remove everything again:
 
 ```sh
-./.build/release/TerminalNavigatorApp &
+make uninstall
 ```
 
-Open **Diagnostics…** from the menu to confirm the hooks are registered and see which focus
-backend is live.
+<details>
+<summary>What <code>make install</code> actually does</summary>
+
+- Builds a release binary and assembles it into a proper `.app` bundle, ad-hoc signed. This is
+  not cosmetic: macOS ties Accessibility and Automation permission to a bundle identity, and a
+  bare binary run out of `.build` gets a new identity on every rebuild — so permissions
+  silently lapse.
+- Adds five hooks to `~/.claude/settings.json`, pointing at the `tnav` inside the bundle.
+  It **merges**: any hooks you already have, including other tools' hooks on the same events,
+  are left alone. A backup is written to `settings.json.tnav-backup`, and re-running replaces
+  its own entries rather than duplicating them.
+- Installs a LaunchAgent so it starts at login. Skip with `make install ARGS=--no-login`, or
+  `./scripts/install.sh --no-login`.
+- Installs to `~/Applications` instead if `/Applications` isn't writable.
+
+`make uninstall` reverses all of it and leaves `~/.claude/tnav` in place so your mutes and
+snoozes survive a reinstall; `./scripts/uninstall.sh --purge` removes that too.
+</details>
+
+Already-running Claude Code sessions appear at their next event — send a message in one and it
+shows up. New sessions appear immediately.
 
 ### Permissions
 
-- **Automation** (Terminal) — required. macOS prompts on first use.
-- **Accessibility** — optional. Without it, only tabs on your current desktop can be reached.
+macOS will ask for these the first time each is needed:
+
+- **Automation** (Terminal) — required, to ask Terminal which tab a session is in.
+- **Accessibility** — optional, to reach tabs on other desktops.
+
+Open **Diagnostics…** from the menu to check hook registration and which focus backend is live.
 
 ## Known limitation: other desktops
 
@@ -126,10 +140,24 @@ the hook, state and UI layers don't change.
 ## Development
 
 ```sh
-swift test                              # 119 unit tests
-./scripts/integration-test.sh           # hook -> state -> list, against a scratch state dir
-python3 scripts/verify-focus.py         # focus, including whether it crossed a desktop
+make test        # 119 unit tests
+make check       # unit tests + the hook integration test
+make run         # run from source, without installing
+make app         # build the .app into ./build without installing
+make clean
+```
+
+Note that `make run` uses the binary in `.build`, whose signature changes on every rebuild —
+so macOS drops its Accessibility grant and cross-desktop jumps quietly stop working. That is a
+property of unsigned local builds, not a bug. `make install` is the one that behaves
+consistently.
+
+Other tools:
+
+```sh
+python3 scripts/verify-focus.py                   # does a jump switch desktop, or pull the window?
 ./.build/debug/TerminalNavigatorApp --dump-menu   # render the menu as text
+swift scripts/make-icon.swift                     # regenerate Resources/AppIcon.icns
 ```
 
 `--dump-menu` exists because an `NSStatusItem` menu can't be opened from another process via

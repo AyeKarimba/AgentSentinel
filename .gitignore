@@ -3,6 +3,10 @@
 .swiftpm/
 Package.resolved
 
+# Assembled app bundle and the intermediate iconset.
+# Resources/AppIcon.icns is committed on purpose: cloning should not require regenerating it.
+build/
+
 # Xcode
 *.xcodeproj
 *.xcworkspace
