@@ -53,6 +53,22 @@ extension NSColor {
     /// right for a 10pt glyph and too faint for words you have to read.
     static let settledGrey = NSColor.tertiaryLabelColor
 
+    /// Purple for the menu bar icon, deliberately more saturated than `royalPurple`.
+    ///
+    /// The row purple is tuned against the dropdown's dark translucent background, where it
+    /// reads clearly. The menu bar is a different problem: it sits over whatever wallpaper the
+    /// user has, and `apple.terminal` is a thin outline with very little area to carry a colour.
+    /// A pale lavender there reads as plain white — which is exactly how it looked on a
+    /// blue-purple desktop, indistinguishable from the grey "nothing running" state.
+    ///
+    /// Red and amber need no such variant: they are already saturated enough to survive a thin
+    /// stroke over an arbitrary background.
+    static let menuBarPurple = NSColor(name: "menuBarPurple") { appearance in
+        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            ? NSColor(srgbRed: 0.776, green: 0.494, blue: 1.0, alpha: 1)   // #C67EFF
+            : NSColor(srgbRed: 0.478, green: 0.216, blue: 0.788, alpha: 1) // #7A37C9
+    }
+
     /// Deep gold, for the legend entry itself.
     ///
     /// Deliberately outside the row palette — red, amber, purple and grey all mean something
