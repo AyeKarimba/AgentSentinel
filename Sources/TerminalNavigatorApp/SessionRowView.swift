@@ -184,8 +184,8 @@ final class SessionRowView: NSView {
     ///
     /// The dot, the project name and the timestamp all carry it, so a row you have opened goes
     /// quiet wholesale even while it is still waiting for a reply — which is what stops a menu
-    /// full of waiting sessions from reading as a wall of red. The dot glyph (filled vs hollow)
-    /// still distinguishes waiting from working once the colour has settled.
+    /// full of waiting sessions from reading as a wall of red. Colour alone separates an opened
+    /// wait (grey) from a session still working (purple), so every dot is filled.
     /// Defined once in `Legend.swift`, alongside the guide that explains it.
     private var tintColor: NSColor { tint.color }
 

@@ -16,9 +16,14 @@ extension RowTint {
         }
     }
 
-    /// Filled for a session waiting on the user, hollow for one still working — the same
-    /// glyphs the rows draw, so the guide shows the real thing rather than an approximation.
-    var glyph: String { self == .working ? "○" : "●" }
+    /// Always filled — the same glyph the rows draw, so the guide shows the real thing rather
+    /// than an approximation.
+    ///
+    /// A working session used to be hollow, from when it shared grey with an
+    /// opened-but-unanswered one and the outline was the only thing telling them apart. Purple
+    /// does that now, so the hollow ring bought nothing and cost legibility: it read as a
+    /// fainter, less active row when the opposite is true.
+    var glyph: String { "●" }
 
     var meaning: String {
         switch self {
