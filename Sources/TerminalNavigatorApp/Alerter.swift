@@ -90,7 +90,10 @@ final class Alerter {
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                     .replacingOccurrences(of: "\n", with: " ")
                 : nil
-            banner.show(record: record, urgent: urgent, settings: settings,
+            // Alerting means this is unread by definition, so the row's own tint is what the
+            // banner should wear — an escalation forces urgent, matching its urgent sound.
+            let tint: RowTint = urgent ? .urgent : record.tint(lastVisit: nil)
+            banner.show(record: record, tint: tint, settings: settings,
                         message: (message?.isEmpty ?? true) ? nil : message)
         }
     }

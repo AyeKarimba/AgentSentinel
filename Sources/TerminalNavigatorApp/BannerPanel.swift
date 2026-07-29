@@ -21,12 +21,12 @@ final class BannerPanel {
         self.onClick = onClick
     }
 
-    func show(record: SessionRecord, urgent: Bool, settings: AlertSettings, message: String?) {
+    func show(record: SessionRecord, tint: RowTint, settings: AlertSettings, message: String?) {
         dismiss()
         self.record = record
 
         let size = settings.bannerSize
-        let content = BannerView(record: record, urgent: urgent, message: message,
+        let content = BannerView(record: record, tint: tint, message: message,
                                  width: size.width,
                                  titleSize: size.titleSize, bodySize: size.bodySize) { [weak self] in
             guard let self, let record = self.record else { return }
@@ -87,23 +87,33 @@ final class BannerPanel {
 
 /// The banner's contents. Sized from the settings rather than a fixed layout, which is the
 /// whole reason this is a custom view.
+///
+/// Colours come from `RowTint.color`, the same definition the rows and the legend read, so a
+/// banner is recognisably the same alert as the row it will take you to — and so changing the
+/// palette cannot leave the banner behind.
 private final class BannerView: NSView {
     private let action: () -> Void
 
-    init(record: SessionRecord, urgent: Bool, message: String?,
+    init(record: SessionRecord, tint: RowTint, message: String?,
          width: Double, titleSize: Double, bodySize: Double, action: @escaping () -> Void) {
         self.action = action
 
-        let accent: NSColor = urgent ? .systemRed : .systemOrange
+        let accent = tint.color
         let title = NSTextField(labelWithString: record.project)
         title.font = .systemFont(ofSize: titleSize, weight: .semibold)
         title.textColor = accent
         title.lineBreakMode = .byTruncatingTail
 
+        // Carries the tint too: in a banner the reason is the point, not an aside, and it is
+        // what makes red-versus-amber legible without reading a word.
         let reason = NSTextField(labelWithString: record.reason?.label ?? "waiting")
-        reason.font = .systemFont(ofSize: bodySize - 1)
-        reason.textColor = .secondaryLabelColor
+        reason.font = .systemFont(ofSize: bodySize - 1, weight: .medium)
+        reason.textColor = accent
+        reason.alphaValue = 0.8
 
+        // Claude's own words stay in plain label colour. This is the one part the user has to
+        // actually read, and the row makes the same call for the same reason — tinting it would
+        // turn the banner into a block of colour with nothing standing out.
         let body = NSTextField(wrappingLabelWithString: message ?? "")
         body.font = .systemFont(ofSize: bodySize)
         body.textColor = .labelColor
@@ -111,7 +121,7 @@ private final class BannerView: NSView {
         body.isSelectable = false
         body.preferredMaxLayoutWidth = width - 60
 
-        let dot = NSTextField(labelWithString: "●")
+        let dot = NSTextField(labelWithString: tint.glyph)
         dot.font = .systemFont(ofSize: titleSize - 2)
         dot.textColor = accent
 
