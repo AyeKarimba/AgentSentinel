@@ -20,6 +20,8 @@ public struct Config: Codable, Equatable, Sendable {
     /// for "I'll get to it in ten minutes" — and a tab muted in that spirit is how a session
     /// goes silently forgotten.
     public var snoozedUntil: [String: Double]
+    /// How the app is allowed to interrupt. Everything the settings window edits.
+    public var alerts: AlertSettings
 
     public init(paused: Bool = false,
                 escalateAfterSeconds: Double = 300,
@@ -27,7 +29,8 @@ public struct Config: Codable, Equatable, Sendable {
                 blockingOnly: Bool = false,
                 mutedTabs: [String] = [],
                 mutedSessions: [String] = [],
-                snoozedUntil: [String: Double] = [:]) {
+                snoozedUntil: [String: Double] = [:],
+                alerts: AlertSettings = AlertSettings()) {
         self.paused = paused
         self.escalateAfterSeconds = escalateAfterSeconds
         self.showLastMessage = showLastMessage
@@ -35,6 +38,7 @@ public struct Config: Codable, Equatable, Sendable {
         self.mutedTabs = mutedTabs
         self.mutedSessions = mutedSessions
         self.snoozedUntil = snoozedUntil
+        self.alerts = alerts
     }
 
     public func isMuted(_ record: SessionRecord) -> Bool {
@@ -76,6 +80,7 @@ public struct Config: Codable, Equatable, Sendable {
         mutedTabs = try container.decodeIfPresent([String].self, forKey: .mutedTabs) ?? []
         mutedSessions = try container.decodeIfPresent([String].self, forKey: .mutedSessions) ?? []
         snoozedUntil = try container.decodeIfPresent([String: Double].self, forKey: .snoozedUntil) ?? [:]
+        alerts = try container.decodeIfPresent(AlertSettings.self, forKey: .alerts) ?? AlertSettings()
     }
 }
 

@@ -16,11 +16,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private var isMenuOpen = false
     /// Drives row highlighting while the menu is open — see `startHoverTracking`.
     private var hoverTimer: Timer?
+    /// Drives the menu bar pulse — see `updatePulse`.
+    private var pulseTimer: Timer?
+    private var pulsePhase: Double = 0
+    private var pulseIsUrgent = false
     /// What the menu on screen was built from, so a reload that changed only numbers can skip
     /// the rebuild entirely.
     private var renderedShape: MenuShape?
 
     var onDiagnostics: (() -> Void)?
+    var onSettings: (() -> Void)?
 
     init(monitor: SessionMonitor,
          controller: AdaptiveTabController = AdaptiveTabController()) {
@@ -163,10 +168,60 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
     }
 
+    // MARK: - Pulse
+
+    /// Breathes the menu bar item while something is unread.
+    ///
+    /// Driven by a timer rather than a Core Animation loop because the status item's image is a
+    /// non-template image rebuilt on every render — an implicit animation on the layer would be
+    /// discarded the next time the badge text changed, which is every second while a wait is
+    /// counting in seconds.
+    ///
+    /// Only ever touches `alphaValue`, so it composes with whatever colour the badge is.
+    private func updatePulse(_ summary: StatusSummary) {
+        let settings = monitor.config.alerts
+        let wanted = settings.pulseEnabled && !monitor.config.paused
+            && (settings.pulseForAllUnread ? summary.needsAttentionCount > 0
+                                           : summary.tint == .urgent)
+        guard wanted else {
+            stopPulse()
+            return
+        }
+        // A blocking request dips further and cycles faster — the difference between "there is
+        // something for you" and "something is stuck waiting on you" should be felt, not read.
+        pulseIsUrgent = summary.tint == .urgent
+        guard pulseTimer == nil else { return }
+        pulsePhase = 0
+        let timer = Timer(timeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
+            self?.stepPulse()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        pulseTimer = timer
+    }
+
+    private func stepPulse() {
+        guard let button = statusItem.button else { return }
+        let settings = monitor.config.alerts
+        // Deeper dip and a faster cycle when it is urgent.
+        let depth = pulseIsUrgent ? max(0.1, settings.pulseDepth * 0.7) : settings.pulseDepth
+        let period = pulseIsUrgent ? 0.9 : 1.6
+        pulsePhase += (1.0 / 30) / period
+        // A raised cosine: smooth at both ends, so it reads as breathing rather than blinking.
+        let wave = (cos(pulsePhase * 2 * .pi) + 1) / 2
+        button.alphaValue = depth + (1 - depth) * wave
+    }
+
+    private func stopPulse() {
+        pulseTimer?.invalidate()
+        pulseTimer = nil
+        statusItem.button?.alphaValue = 1
+    }
+
     // MARK: - Menu bar button
 
     private func renderButton(_ summary: StatusSummary) {
         guard let button = statusItem.button else { return }
+        updatePulse(summary)
 
         let tint: NSColor
         switch summary.tint {
@@ -268,6 +323,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
 
         menu.addItem(Legend.menuItem())
+
+        let settings = NSMenuItem(title: "Settings…", action: #selector(showSettings),
+                                  keyEquivalent: ",")
+        settings.target = self
+        menu.addItem(settings)
 
         let messages = NSMenuItem(title: "Show Claude's last message",
                                   action: #selector(toggleLastMessage),
@@ -378,7 +438,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     // MARK: - Actions
 
-    private func jump(to record: SessionRecord) {
+    /// Also the banner's click target — a banner and its row lead to the same place.
+    func jump(to record: SessionRecord) {
         do {
             if try controller.focus(tty: record.tty) == .notFound {
                 EventLog.append("menu: no tab owns \(record.tty)")
@@ -448,6 +509,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func showDiagnostics() {
         onDiagnostics?()
+    }
+
+    @objc private func showSettings() {
+        onSettings?()
     }
 
     private func presentError(_ error: Error) {

@@ -25,6 +25,7 @@ public enum Paths {
     public static let configFile: URL = root.appendingPathComponent("config.json")
     public static let eventLog: URL = root.appendingPathComponent("events.log")
     public static let visitsFile: URL = root.appendingPathComponent("visits.json")
+    public static let alertsFile: URL = root.appendingPathComponent("alerts.json")
 
     public static func ensureRoot() throws {
         try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)

@@ -95,10 +95,37 @@ Refusing off-desktop jumps was also tried, and rejected: most tabs are usually o
 desktop, so it turned the app into a dialog box. Bringing the window to you is a nuisance, but a
 visible and undoable one.
 
+## Getting your attention
+
+The badge is passive — fine if you glance at the menu bar, useless if you're deep in something
+else. So a tab that starts waiting can also raise a banner, play a sound, and pulse the menu
+bar icon. All of it is adjustable under **Settings…** (`⌘,`):
+
+| | |
+|---|---|
+| **Banner** | on/off, three sizes, how long it stays, and whether it may appear over fullscreen apps |
+| **Sound** | on/off, volume, and separate sounds for "waiting" and "needs permission" |
+| **Pulse** | on/off, strength, and whether finished turns pulse or only permission requests |
+
+Permission requests always pulse deeper and faster than finished turns — the difference between
+*there's something for you* and *something is stuck* should be felt, not read.
+
+Each request alerts **once**. If it's still unanswered after five minutes it escalates a single
+time, at the urgent sound, and then goes quiet for good. Muting, snoozing, pausing, and the tab
+you're already looking at all suppress alerts entirely.
+
+The banner is the app's own window rather than a system notification, and that's a deliberate
+trade. macOS fixes the size of a system notification and decides from your Focus settings
+whether it may appear over a fullscreen app — an app gets no say in either. Making those two
+adjustable required owning the window. The cost is that this banner does not respect Do Not
+Disturb, which is why **show over fullscreen apps is off by default**: going fullscreen is often
+precisely a request not to be interrupted.
+
 ## Usage
 
-Click any row to jump to that tab. The controls on each row snooze it for 10 minutes
-(⌥-click for 30) or mute that tab entirely. `⌥⌘J` jumps to the oldest tab waiting on you.
+Click any row to jump to that tab, or click a banner to go straight to the tab that raised it.
+The controls on each row snooze it for 10 minutes (⌥-click for 30) or mute that tab entirely.
+`⌥⌘J` jumps to the oldest tab waiting on you.
 
 There's also a CLI:
 
@@ -132,7 +159,7 @@ the hook, state and UI layers don't change.
 ## Development
 
 ```sh
-make test        # 119 unit tests
+make test        # 130 unit tests
 make check       # unit tests + the hook integration test
 make run         # run from source, without installing
 make app         # build the .app into ./build without installing

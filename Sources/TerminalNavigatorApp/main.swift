@@ -7,6 +7,8 @@ import TNavCore
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let monitor = SessionMonitor()
     private var statusItem: StatusItemController?
+    private var settingsWindow: SettingsWindow?
+    private var alerter: Alerter?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -16,11 +18,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self else { return }
             Diagnostics.present(monitor: self.monitor)
         }
+        let settings = SettingsWindow(monitor: monitor)
+        settingsWindow = settings
+        controller.onSettings = { settings.show() }
         statusItem = controller
 
-        // Rebuilt on every change: the session set, the elapsed labels and the mute states all
-        // move, and a menu bar menu is cheap enough that diffing it would be false economy.
-        monitor.onChange = { [weak controller] in controller?.render() }
+        // Clicking a banner goes to that tab, exactly as clicking its row does.
+        let alerter = Alerter { [weak controller] record in controller?.jump(to: record) }
+        self.alerter = alerter
+
+        monitor.onChange = { [weak controller, weak monitor] in
+            controller?.render()
+            guard let monitor else { return }
+            // After the render, so a slow alert can never delay the menu updating.
+            alerter.evaluate(records: monitor.records,
+                             config: monitor.config,
+                             frontmostTTY: monitor.frontmostTTY,
+                             showLastMessage: monitor.config.showLastMessage)
+        }
         monitor.start()
         controller.render()
 
