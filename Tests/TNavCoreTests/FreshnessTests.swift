@@ -55,10 +55,13 @@ final class FreshnessTests: XCTestCase {
         XCTAssertEqual(record(reason: .turnComplete).tint(lastVisit: nil), .waiting)
     }
 
-    func testOpeningTheTabSettlesTheRow() {
-        XCTAssertEqual(record(reason: .permission).tint(lastVisit: 1001), .settled,
-                       "colour is a seen/unseen signal — the session is still waiting either way")
-        XCTAssertEqual(record(reason: .turnComplete).tint(lastVisit: 1001), .settled)
+    func testOpeningTheTabMovesItToOwedRatherThanSilent() {
+        // Opening it is not answering it. The alert stops, because you have seen it; the colour
+        // is what keeps holding the tab until you actually reply.
+        XCTAssertEqual(record(reason: .permission).tint(lastVisit: 1001), .owed)
+        XCTAssertEqual(record(reason: .turnComplete).tint(lastVisit: 1001), .owed,
+                       "a finished turn you opened and left is owed too — a turn completion is "
+                       + "often a question, and the hook cannot tell us which")
     }
 
     func testWorkingRowsReadAsWorkingRatherThanSettled() {
@@ -70,9 +73,10 @@ final class FreshnessTests: XCTestCase {
                        "whether you have visited is irrelevant — nothing is being asked of you")
     }
 
-    func testOnlyAnUnansweredWaitReadsAsSettled() {
-        XCTAssertEqual(record(reason: .permission).tint(lastVisit: 1001), .settled)
-        XCTAssertEqual(record(reason: .turnComplete).tint(lastVisit: 1001), .settled)
+    func testWorkingIsTheOnlyStateThatOwesNothing() {
+        XCTAssertEqual(record(reason: nil, state: .working).tint(lastVisit: nil), .working)
+        XCTAssertEqual(record(reason: .permission).tint(lastVisit: 1001), .owed,
+                       "every waiting row owes something; only a working one does not")
     }
 
     // MARK: - Refresh cadence

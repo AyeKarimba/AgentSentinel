@@ -68,11 +68,13 @@ public final class VisitStore {
 /// grey even though it is still waiting for a reply, which is what makes a menu full of
 /// waiting sessions scannable.
 public enum RowTint: String, Equatable, Sendable {
-    /// Waiting, already opened, still unanswered — the row that is genuinely just sitting
-    /// there. The only case that reads as grey.
-    case settled
-    /// Claude is running in this tab. Not a demand on the user, but not idle either, so it
-    /// gets its own colour rather than being lumped in with the rows that want nothing.
+    /// Waiting, already opened, still unanswered.
+    ///
+    /// The tab you looked at, meant to reply to, and left — usually because something louder
+    /// pulled you away. It has stopped alerting, because you have seen it, so this colour is
+    /// the only thing still holding it. Distinct from `working`: this one is waiting on *you*.
+    case owed
+    /// Claude is running in this tab. Nothing is required of the user.
     case working
     /// An unread turn completion.
     case waiting
@@ -100,7 +102,7 @@ public extension SessionRecord {
 
     func tint(lastVisit: Double?) -> RowTint {
         guard state == .waiting else { return .working }
-        guard isUnseen(lastVisit: lastVisit) else { return .settled }
+        guard isUnseen(lastVisit: lastVisit) else { return .owed }
         return urgency == .urgent ? .urgent : .waiting
     }
 }

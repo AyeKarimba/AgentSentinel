@@ -23,8 +23,13 @@ The icon itself climbs the same scale, so a glance at the menu bar is enough:
 |---|---|
 | grey `>_` | no Claude sessions at all |
 | purple `>_ 3` | 3 tabs are working; nothing wants you |
+| teal `>_ 2` | 2 tabs you opened still need an answer |
 | amber `>_ 1 · 2m` | a tab has finished and is waiting on you |
 | red `>_ 2 · 4m` | a tab is blocked on a permission request |
+
+Teal is the one that catches the tab you meant to reply to and forgot — you opened it, so it
+stopped alerting, and something louder pulled you away. It stops alerting but keeps its colour
+until you actually answer.
 
 ## Requirements
 

@@ -15,6 +15,9 @@ public struct StatusSummary: Equatable, Sendable {
         case idle
         /// Sessions are running, and nothing is waiting on the user.
         case working
+        /// Tabs the user has opened but not answered. Quieter than `waiting` — they have
+        /// already been seen, so nothing is alerting about them; this is what still holds them.
+        case owed
         /// Something is waiting, nothing is blocking.
         case waiting
         /// A permission request is blocking a session.
@@ -44,6 +47,9 @@ public struct StatusSummary: Equatable, Sendable {
     /// Sessions Claude is actively running in. What the badge reports when nothing wants you —
     /// the colour says the machine is alive, this says how much of it is.
     public let workingCount: Int
+    /// Waiting sessions the user has opened and not answered. Same set as
+    /// `attendedWaitingCount`, named for what the badge and the icon do with it.
+    public var owedCount: Int { attendedWaitingCount }
     /// Blocking requests the user has not yet been present for, anywhere.
     public let unseenUrgentCount: Int
     /// The subset of those sitting in a silenced tab — the one thing the badge structurally
@@ -84,6 +90,10 @@ public struct StatusSummary: Equatable, Sendable {
             tint = .urgent
         } else if !config.paused, !unread.isEmpty {
             tint = .waiting
+        } else if audible.count > unread.count {
+            // Opened and unanswered. Below the two attention colours because it has already
+            // been seen, above working because it is still waiting on the user.
+            tint = .owed
         } else if !records.isEmpty {
             tint = .working
         } else {
@@ -98,9 +108,9 @@ public struct StatusSummary: Equatable, Sendable {
         if needsAttentionCount > 0, let oldestWait {
             return "\(needsAttentionCount) · \(Elapsed.short(oldestWait))"
         }
-        // Nothing wants you, so report what is running instead. The colour already says the
-        // machine is alive; this says how much of it is, and keeps the badge from being an
-        // unexplained bare glyph whenever work is in flight.
+        // Otherwise report the most pressing thing left, so the number always means whatever
+        // the colour is currently showing and never two things at once.
+        if owedCount > 0 { return "\(owedCount)" }
         return workingCount > 0 ? "\(workingCount)" : nil
     }
 

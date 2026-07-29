@@ -36,14 +36,15 @@ final class BadgeQueueTests: XCTestCase {
                        "the wait reported must be the next unchecked tab's, not the one just read")
     }
 
-    func testCheckingEveryTabClearsTheBadgeEntirely() {
+    func testCheckingEveryTabEmptiesTheQueueButNotTheBadge() {
         let records = [record("a", since: 760), record("b", since: 953)]
         let summary = StatusSummary(records: records, config: Config(),
                                     visits: ["a": 999, "b": 999], now: 1000)
-        XCTAssertNil(summary.badgeText, "nothing is asking for you any more")
-        XCTAssertEqual(summary.tint, .working,
-                       "the sessions are still there, they just want nothing — grey is reserved "
-                       + "for having no sessions at all")
+        XCTAssertEqual(summary.badgeText, "2",
+                       "no longer a queue of unread requests, but two tabs you opened and left "
+                       + "unanswered — the badge stops counting down and starts counting those")
+        XCTAssertEqual(summary.tint, .owed,
+                       "out of the badge queue, but still unanswered — that is what owed is for")
         XCTAssertEqual(summary.needsAttentionCount, 0)
     }
 
@@ -112,7 +113,7 @@ final class BadgeQueueTests: XCTestCase {
         let summary = StatusSummary(records: [escalated], config: Config(),
                                     visits: ["a": 960], now: 1000)
         XCTAssertEqual(summary.needsAttentionCount, 0)
-        XCTAssertNil(summary.badgeText)
+        XCTAssertEqual(summary.badgeText, "1", "seen, so out of the queue — but still owed")
     }
 
     // MARK: - Redraw cadence
@@ -128,8 +129,8 @@ final class BadgeQueueTests: XCTestCase {
         let records = [record("a", since: 990)]
         let summary = StatusSummary(records: records, config: Config(),
                                     visits: ["a": 999], now: 1000)
-        XCTAssertNil(summary.badgeText, "out of the badge")
-        XCTAssertEqual(summary.refreshInterval, 1, "but its row is on screen and still counting")
+        XCTAssertEqual(summary.badgeText, "1", "out of the queue, counted as owed")
+        XCTAssertEqual(summary.refreshInterval, 1, "and its row is on screen, still counting")
     }
 
     // MARK: - Wording

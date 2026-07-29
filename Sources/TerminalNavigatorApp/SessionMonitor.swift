@@ -135,7 +135,7 @@ final class SessionMonitor {
         switch record.tint(lastVisit: visits[record.sessionId]) {
         case .urgent: return 0
         case .waiting: return 1
-        case .settled: return 2
+        case .owed: return 2
         case .working: return 3
         }
     }
