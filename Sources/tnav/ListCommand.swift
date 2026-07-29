@@ -27,6 +27,7 @@ enum ListCommand {
             let decision = AlertPolicy.decide(record: record,
                                               config: config,
                                               frontmostTTY: frontmost,
+                                              lastVisit: visits[record.sessionId],
                                               now: now)
             var notes: [String] = []
             if let remaining = config.snoozeRemaining(record, now: now) {
@@ -50,6 +51,7 @@ enum ListCommand {
         case .suppressPaused: return "paused"
         case .suppressNonBlocking: return "not blocking"
         case .suppressAlreadyFocused: return "you're here"
+        case .suppressAlreadySeen: return "you've seen it"
         case .suppressAlreadyNotified: return "already alerted"
         }
     }

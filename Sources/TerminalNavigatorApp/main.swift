@@ -27,13 +27,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let alerter = Alerter { [weak controller] record in controller?.jump(to: record) }
         self.alerter = alerter
 
-        monitor.onChange = { [weak controller, weak monitor] in
-            controller?.render()
+        monitor.onChange = { [weak controller] in controller?.render() }
+        monitor.onAlertCheck = { [weak monitor] in
             guard let monitor else { return }
-            // After the render, so a slow alert can never delay the menu updating.
             alerter.evaluate(records: monitor.records,
                              config: monitor.config,
                              frontmostTTY: monitor.frontmostTTY,
+                             visits: monitor.visits,
                              showLastMessage: monitor.config.showLastMessage)
         }
         monitor.start()

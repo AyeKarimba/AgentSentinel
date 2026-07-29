@@ -22,11 +22,13 @@ final class StatusSummaryTests: XCTestCase {
         XCTAssertEqual(summary.accessibilityDescription, "No Claude sessions need you")
     }
 
-    func testWorkingSessionsAreNotCounted() {
+    func testWorkingSessionsAreNotCountedAsWaitingButAreReported() {
         let records = [record(id: "a", state: .working, reason: nil, since: 900)]
         let summary = StatusSummary(records: records, config: Config(), now: 1000)
-        XCTAssertEqual(summary.waitingCount, 0)
-        XCTAssertNil(summary.badgeText)
+        XCTAssertEqual(summary.waitingCount, 0, "nothing is waiting on the user")
+        XCTAssertEqual(summary.workingCount, 1)
+        XCTAssertEqual(summary.badgeText, "1",
+                       "with nothing waiting the badge reports what is running instead")
     }
 
     func testBadgeShowsCountAndLongestWait() {

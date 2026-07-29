@@ -31,8 +31,12 @@ final class SessionMonitor {
     /// TTY of the tab the user is looking at, or nil when Terminal isn't frontmost.
     private(set) var frontmostTTY: String?
 
-    /// Called on the main queue whenever the visible state may have changed.
+    /// Called on the main queue whenever the visible state may have changed. Fires early, so
+    /// the menu never waits on anything slow.
     var onChange: (() -> Void)?
+    /// Called once per pass, after the frontmost-tab poll, when everything alerting depends on
+    /// is current. Deliberately separate from `onChange`, which runs before that poll.
+    var onAlertCheck: (() -> Void)?
 
     init(store: SessionStore = SessionStore(),
          configStore: ConfigStore = ConfigStore(),
@@ -94,6 +98,10 @@ final class SessionMonitor {
             // its place in the order — cheap to redo, and only when something actually moved.
             apply(live)
         }
+        // Only now, with the frontmost tab and the visits current. Running this from `apply`
+        // would evaluate against the previous pass's poll, and the case it gets wrong is the
+        // one that matters: the instant the user switches into the tab that is waiting.
+        onAlertCheck?()
         scheduleRefresh(after: policy.interval)
     }
 

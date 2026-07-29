@@ -22,7 +22,7 @@ The icon itself climbs the same scale, so a glance at the menu bar is enough:
 | Icon | Meaning |
 |---|---|
 | grey `>_` | no Claude sessions at all |
-| purple `>_` | Claude is running; nothing wants you |
+| purple `>_ 3` | 3 tabs are working; nothing wants you |
 | amber `>_ 1 · 2m` | a tab has finished and is waiting on you |
 | red `>_ 2 · 4m` | a tab is blocked on a permission request |
 
@@ -168,7 +168,7 @@ the hook, state and UI layers don't change.
 ## Development
 
 ```sh
-make test        # 131 unit tests
+make test        # 134 unit tests
 make check       # unit tests + the hook integration test
 make run         # run from source, without installing
 make app         # build the .app into ./build without installing

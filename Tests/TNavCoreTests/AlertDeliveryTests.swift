@@ -35,12 +35,14 @@ final class AlertDeliveryTests: XCTestCase {
     private func decide(_ record: SessionRecord,
                         config: Config = Config(),
                         frontmostTTY: String? = nil,
+                        lastVisit: Double? = nil,
                         now: Double = 1000) -> AlertDecision {
         var view = record
         view.notified = store.hasNotified(record)
         view.escalated = store.hasEscalated(record)
         return AlertPolicy.decide(record: view, config: config,
-                                  frontmostTTY: frontmostTTY, now: now)
+                                  frontmostTTY: frontmostTTY,
+                                  lastVisit: lastVisit, now: now)
     }
 
     // MARK: - Firing once
@@ -98,6 +100,31 @@ final class AlertDeliveryTests: XCTestCase {
     func testTheTabYouAreLookingAtDoesNotInterruptYou() {
         let target = record()
         XCTAssertEqual(decide(target, frontmostTTY: target.tty), .suppressAlreadyFocused)
+    }
+
+    /// The bug this was written for: opening a waiting tab and being alerted about it anyway
+    /// while reading it. Knowing the frontmost tab costs an Apple Event, so it is sampled — and
+    /// stale at exactly the wrong moment, the instant you switch in. The visit outlives the
+    /// sample and answers the same question without the race.
+    func testATabYouHaveOpenedDoesNotAlertEvenIfTheFrontmostSampleIsStale() {
+        let target = record(since: 1000)
+        XCTAssertEqual(decide(target, frontmostTTY: nil, lastVisit: 1010, now: 1020),
+                       .suppressAlreadySeen)
+    }
+
+    func testHavingOpenedItAlsoStopsTheEscalation() {
+        let target = record(since: 1000)
+        store.markNotified(target)
+        XCTAssertEqual(decide(target, frontmostTTY: nil, lastVisit: 1010, now: 1400),
+                       .suppressAlreadySeen,
+                       "you have seen it; the row colour carries it from here, not another ping")
+    }
+
+    func testAnOlderVisitDoesNotCoverANewerRequest() {
+        let target = record(since: 2000)
+        XCTAssertEqual(decide(target, frontmostTTY: nil, lastVisit: 1500, now: 2010),
+                       .notify(.urgent),
+                       "the visit predates the request, so it cannot vouch for it")
     }
 
     // MARK: - Settings

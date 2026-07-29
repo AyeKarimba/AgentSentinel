@@ -65,8 +65,8 @@ extension NSColor {
     /// stroke over an arbitrary background.
     static let menuBarPurple = NSColor(name: "menuBarPurple") { appearance in
         appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-            ? NSColor(srgbRed: 0.776, green: 0.494, blue: 1.0, alpha: 1)   // #C67EFF
-            : NSColor(srgbRed: 0.478, green: 0.216, blue: 0.788, alpha: 1) // #7A37C9
+            ? NSColor(srgbRed: 0.659, green: 0.333, blue: 0.969, alpha: 1) // #A855F7
+            : NSColor(srgbRed: 0.420, green: 0.129, blue: 0.659, alpha: 1) // #6B21A8
     }
 
     /// Deep gold, for the legend entry itself.
@@ -190,8 +190,8 @@ enum Legend {
                             color: RowTint.urgent.color))
         menu.addItem(sample(">_", "1 · 2m", "A tab has finished and is waiting on you",
                             color: RowTint.waiting.color))
-        menu.addItem(sample(">_", "", "Claude is running; nothing wants you",
-                            color: RowTint.working.color))
+        menu.addItem(sample(">_", "3", "3 tabs are working; nothing wants you",
+                            color: .menuBarPurple))
         menu.addItem(sample(">_", "", "No Claude sessions at all",
                             color: .secondaryLabelColor))
         menu.addItem(sample("●", "", "Unopened request in a muted or snoozed tab",

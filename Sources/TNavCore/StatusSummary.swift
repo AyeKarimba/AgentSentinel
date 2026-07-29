@@ -41,6 +41,9 @@ public struct StatusSummary: Equatable, Sendable {
     /// Waiting sessions the user has already opened. They stay in the menu; they have just
     /// stopped asking for anything.
     public let attendedWaitingCount: Int
+    /// Sessions Claude is actively running in. What the badge reports when nothing wants you —
+    /// the colour says the machine is alive, this says how much of it is.
+    public let workingCount: Int
     /// Blocking requests the user has not yet been present for, anywhere.
     public let unseenUrgentCount: Int
     /// The subset of those sitting in a silenced tab — the one thing the badge structurally
@@ -63,6 +66,7 @@ public struct StatusSummary: Equatable, Sendable {
         needsAttentionCount = unread.count
         waitingCount = audible.count
         attendedWaitingCount = audible.count - unread.count
+        workingCount = records.filter { $0.state == .working }.count
         silencedWaitingCount = waiting.count - audible.count
         oldestWait = unread.map { $0.elapsed(now: now) }.max()
         youngestWait = waiting.map { $0.elapsed(now: now) }.min()
@@ -91,8 +95,13 @@ public struct StatusSummary: Equatable, Sendable {
     /// how long the oldest of them has been. Nil once the queue empties, which is how the item
     /// renders as a bare dimmed glyph with no timestamp at all.
     public var badgeText: String? {
-        guard needsAttentionCount > 0, let oldestWait else { return nil }
-        return "\(needsAttentionCount) · \(Elapsed.short(oldestWait))"
+        if needsAttentionCount > 0, let oldestWait {
+            return "\(needsAttentionCount) · \(Elapsed.short(oldestWait))"
+        }
+        // Nothing wants you, so report what is running instead. The colour already says the
+        // machine is alive; this says how much of it is, and keeps the badge from being an
+        // unexplained bare glyph whenever work is in flight.
+        return workingCount > 0 ? "\(workingCount)" : nil
     }
 
     /// Whether to draw the dot beside the glyph.
