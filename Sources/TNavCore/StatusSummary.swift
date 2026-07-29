@@ -5,9 +5,16 @@ import Foundation
 /// Pure and AppKit-free so the badge rules — what counts, what a mute suppresses, which wait
 /// the timer reports — can be tested as a table rather than eyeballed in the menu bar.
 public struct StatusSummary: Equatable, Sendable {
+    /// What the menu bar icon is coloured, in ascending order of "this concerns you".
+    ///
+    /// Grey means there is nothing to track at all, so the icon reads as genuinely off rather
+    /// than merely quiet — which is what makes purple worth having: sessions are running, and
+    /// none of them wants anything from you.
     public enum Tint: String, Equatable, Sendable {
-        /// Nothing waiting.
+        /// No Claude sessions at all.
         case idle
+        /// Sessions are running, and nothing is waiting on the user.
+        case working
         /// Something is waiting, nothing is blocking.
         case waiting
         /// A permission request is blocking a session.
@@ -66,12 +73,17 @@ public struct StatusSummary: Equatable, Sendable {
         unseenUrgentCount = unseenUrgent.count
         silencedUnseenUrgentCount = unseenUrgent.filter { config.isSilenced($0, now: now) }.count
 
-        if config.paused || unread.isEmpty {
-            tint = .idle
-        } else if unread.contains(where: { $0.urgency == .urgent }) {
+        // Paused drops out of the two attention colours but not down to grey: grey now claims
+        // there is nothing running at all, and a paused machine full of sessions would be a
+        // lie. Pausing stops the nagging; it does not make the work disappear.
+        if !config.paused, unread.contains(where: { $0.urgency == .urgent }) {
             tint = .urgent
-        } else {
+        } else if !config.paused, !unread.isEmpty {
             tint = .waiting
+        } else if !records.isEmpty {
+            tint = .working
+        } else {
+            tint = .idle
         }
     }
 

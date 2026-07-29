@@ -17,6 +17,15 @@ itself, so nobody has to memorise it:
 Open a tab and its row goes quiet — the badge moves to the next one, and disappears once
 nothing is left waiting on you.
 
+The icon itself climbs the same scale, so a glance at the menu bar is enough:
+
+| Icon | Meaning |
+|---|---|
+| grey `>_` | no Claude sessions at all |
+| purple `>_` | Claude is running; nothing wants you |
+| amber `>_ 1 · 2m` | a tab has finished and is waiting on you |
+| red `>_ 2 · 4m` | a tab is blocked on a permission request |
+
 ## Requirements
 
 - macOS 13 or later
@@ -159,7 +168,7 @@ the hook, state and UI layers don't change.
 ## Development
 
 ```sh
-make test        # 130 unit tests
+make test        # 131 unit tests
 make check       # unit tests + the hook integration test
 make run         # run from source, without installing
 make app         # build the .app into ./build without installing

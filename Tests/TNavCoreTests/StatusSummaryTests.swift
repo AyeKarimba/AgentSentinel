@@ -64,21 +64,45 @@ final class StatusSummaryTests: XCTestCase {
         XCTAssertEqual(summary.silencedWaitingCount, 1, "but it is still reported in the menu")
     }
 
-    func testAllMutedReadsAsIdleButStillReportsTheHiddenCount() {
+    func testAllMutedStopsNaggingButStillLooksAlive() {
         let muted = record(id: "a", reason: .permission, since: 700)
         let config = Config(mutedTabs: [muted.tabMuteKey])
         let summary = StatusSummary(records: [muted], config: config, now: 1000)
-        XCTAssertEqual(summary.tint, .idle)
+        XCTAssertEqual(summary.tint, .working,
+                       "muting silences a tab; it does not stop Claude running in it")
         XCTAssertNil(summary.badgeText)
         XCTAssertEqual(summary.silencedWaitingCount, 1)
     }
 
-    func testPauseForcesIdleTintButKeepsTheCount() {
+    func testPauseDropsTheAttentionColoursButNotToGrey() {
         let records = [record(id: "a", reason: .permission, since: 700)]
         let summary = StatusSummary(records: records, config: Config(paused: true), now: 1000)
-        XCTAssertEqual(summary.tint, .idle, "paused should not glow red at you")
+        XCTAssertEqual(summary.tint, .working,
+                       "paused should not glow red at you — but grey would claim nothing is "
+                       + "running, which is worse than the nagging it replaced")
         XCTAssertEqual(summary.waitingCount, 1, "but the sessions are still waiting")
         XCTAssertEqual(summary.badgeText, "1 · 5m")
+    }
+
+    // MARK: - The icon's ladder
+
+    /// Each rung is "more this concerns you" than the one below, and every step is verified
+    /// here because the icon is the only part of the app visible without opening anything.
+    func testIconColourClimbsWithHowMuchItConcernsYou() {
+        func tint(_ records: [SessionRecord], _ visits: [String: Double] = [:]) -> StatusSummary.Tint {
+            StatusSummary(records: records, config: Config(), visits: visits, now: 1000).tint
+        }
+        let busy = record(id: "w", state: .working, reason: nil, since: 900)
+        let finished = record(id: "f", reason: .turnComplete, since: 900)
+        let blocked = record(id: "b", reason: .permission, since: 900, tty: "/dev/ttys009")
+
+        XCTAssertEqual(tint([]), .idle, "no sessions at all")
+        XCTAssertEqual(tint([busy]), .working, "Claude is running, nothing wants you")
+        XCTAssertEqual(tint([busy, finished]), .waiting, "one has finished and is waiting")
+        XCTAssertEqual(tint([busy, finished, blocked]), .urgent, "one is blocked on permission")
+
+        XCTAssertEqual(tint([busy, finished], ["f": 999]), .working,
+                       "opening the finished one drops it back a rung, it does not go grey")
     }
 
     // MARK: - Redraw cadence

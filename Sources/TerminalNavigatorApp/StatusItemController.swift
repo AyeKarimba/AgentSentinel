@@ -223,11 +223,15 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         guard let button = statusItem.button else { return }
         updatePulse(summary)
 
+        // The three meaningful colours come from `RowTint`, so the icon and the rows it
+        // summarises cannot drift. Idle has no row equivalent — no row means "nothing exists" —
+        // so it uses the menu bar's own dimmed label colour.
         let tint: NSColor
         switch summary.tint {
         case .idle: tint = .secondaryLabelColor
-        case .waiting: tint = .systemOrange
-        case .urgent: tint = .systemRed
+        case .working: tint = RowTint.working.color
+        case .waiting: tint = RowTint.waiting.color
+        case .urgent: tint = RowTint.urgent.color
         }
 
         // The glyph is coloured through a palette symbol configuration rather than

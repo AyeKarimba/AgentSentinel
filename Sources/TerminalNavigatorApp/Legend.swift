@@ -170,12 +170,16 @@ enum Legend {
 
         menu.addItem(.separator())
         menu.addItem(heading("The menu bar icon"))
-        menu.addItem(sample("", "2 · 4m", "2 tabs need you; the oldest has waited 4m",
+        menu.addItem(sample(">_", "2 · 4m", "A tab needs permission; 2 are waiting",
                             color: RowTint.urgent.color))
+        menu.addItem(sample(">_", "1 · 2m", "A tab has finished and is waiting on you",
+                            color: RowTint.waiting.color))
+        menu.addItem(sample(">_", "", "Claude is running; nothing wants you",
+                            color: RowTint.working.color))
+        menu.addItem(sample(">_", "", "No Claude sessions at all",
+                            color: .secondaryLabelColor))
         menu.addItem(sample("●", "", "Unopened request in a muted or snoozed tab",
-                            color: .systemRed))
-        menu.addItem(sample("", "no time", "Everything has been opened — nothing wants you",
-                            color: .tertiaryLabelColor))
+                            color: RowTint.urgent.color))
 
         menu.addItem(.separator())
         menu.addItem(heading("The buttons on each row"))

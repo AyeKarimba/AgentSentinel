@@ -41,7 +41,9 @@ final class BadgeQueueTests: XCTestCase {
         let summary = StatusSummary(records: records, config: Config(),
                                     visits: ["a": 999, "b": 999], now: 1000)
         XCTAssertNil(summary.badgeText, "nothing is asking for you any more")
-        XCTAssertEqual(summary.tint, .idle, "and so nothing should be coloured")
+        XCTAssertEqual(summary.tint, .working,
+                       "the sessions are still there, they just want nothing — grey is reserved "
+                       + "for having no sessions at all")
         XCTAssertEqual(summary.needsAttentionCount, 0)
     }
 
