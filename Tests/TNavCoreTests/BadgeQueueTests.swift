@@ -9,7 +9,7 @@ import XCTest
 /// be the same number, which meant the badge kept reporting work you had already looked at.
 final class BadgeQueueTests: XCTestCase {
     private func record(_ id: String,
-                        reason: WaitReason? = .permission,
+                        reason: WaitReason? = .turnComplete,
                         state: SessionState = .waiting,
                         since: Double,
                         reasonSince: Double? = nil) -> SessionRecord {
@@ -24,7 +24,7 @@ final class BadgeQueueTests: XCTestCase {
         let summary = StatusSummary(records: records, config: Config(),
                                     visits: [:], now: 1000)
         XCTAssertEqual(summary.badgeText, "2 · 4m")
-        XCTAssertEqual(summary.tint, .urgent)
+        XCTAssertEqual(summary.tint, .waiting)
     }
 
     func testCheckingOneTabHandsTheBadgeToTheNext() {
@@ -58,19 +58,18 @@ final class BadgeQueueTests: XCTestCase {
     }
 
     func testTintFollowsTheUncheckedTabsNotTheCheckedOnes() {
-        // The urgent one has been dealt with; only a turn completion is left unread.
-        let records = [record("blocking", reason: .permission, since: 700),
-                       record("finished", reason: .turnComplete, since: 900)]
+        // Two finished turns, one already opened. The badge should describe only the other.
+        let records = [record("read", since: 700), record("unread", since: 900)]
         let summary = StatusSummary(records: records, config: Config(),
-                                    visits: ["blocking": 999], now: 1000)
-        XCTAssertEqual(summary.tint, .waiting, "no unread blocking request is left to be red about")
-        XCTAssertEqual(summary.badgeText, "1 · 1m")
+                                    visits: ["read": 999], now: 1000)
+        XCTAssertEqual(summary.tint, .waiting)
+        XCTAssertEqual(summary.badgeText, "1 · 1m", "the opened one is teal now, not in the queue")
     }
 
     // MARK: - The dot, now reserved for what the badge cannot show
 
     func testDotFiresOnlyForSilencedTabs() {
-        let target = record("a", since: 700)
+        let target = record("a", reason: .permission, since: 700)
         let config = Config(mutedTabs: [target.tabMuteKey])
         let summary = StatusSummary(records: [target], config: config, visits: [:], now: 1000)
         XCTAssertNil(summary.badgeText, "silencing a tab takes it out of the badge by design")
@@ -79,14 +78,14 @@ final class BadgeQueueTests: XCTestCase {
     }
 
     func testDotStaysQuietWhenTheBadgeAlreadySaysIt() {
-        let summary = StatusSummary(records: [record("a", since: 700)], config: Config(),
-                                    visits: [:], now: 1000)
+        let summary = StatusSummary(records: [record("a", reason: .permission, since: 700)],
+                                    config: Config(), visits: [:], now: 1000)
         XCTAssertEqual(summary.badgeText, "1 · 5m")
         XCTAssertFalse(summary.showsUnseenDot, "the badge is already red about this one")
     }
 
     func testDotClearsOnceTheSilencedTabIsOpened() {
-        let target = record("a", since: 700)
+        let target = record("a", reason: .permission, since: 700)
         let config = Config(mutedTabs: [target.tabMuteKey])
         let summary = StatusSummary(records: [target], config: config,
                                     visits: ["a": 999], now: 1000)
@@ -108,12 +107,16 @@ final class BadgeQueueTests: XCTestCase {
                        "the wait reported is still the real one, measured from `since`")
     }
 
-    func testVisitingAfterTheEscalationSettlesItAgain() {
-        let escalated = record("a", reason: .permission, since: 700, reasonSince: 950)
-        let summary = StatusSummary(records: [escalated], config: Config(),
+    func testOpeningABlockedTabDoesNotTakeItOutOfTheQueue() {
+        // Everything else leaves the queue once seen. A permission request does not: Claude is
+        // still stopped, and a badge that dropped it would be reporting your attention rather
+        // than the session.
+        let blocked = record("a", reason: .permission, since: 700)
+        let summary = StatusSummary(records: [blocked], config: Config(),
                                     visits: ["a": 960], now: 1000)
-        XCTAssertEqual(summary.needsAttentionCount, 0)
-        XCTAssertEqual(summary.badgeText, "1", "seen, so out of the queue — but still owed")
+        XCTAssertEqual(summary.needsAttentionCount, 1)
+        XCTAssertEqual(summary.tint, .urgent, "opening it did not unblock it")
+        XCTAssertEqual(summary.badgeText, "1 · 5m")
     }
 
     // MARK: - Redraw cadence

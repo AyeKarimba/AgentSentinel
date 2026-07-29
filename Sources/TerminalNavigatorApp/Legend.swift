@@ -13,6 +13,7 @@ extension RowTint {
         case .waiting: return .systemOrange
         case .owed: return .owedTeal
         case .working: return .royalPurple
+        case .settled: return .tertiaryLabelColor
         }
     }
 
@@ -27,9 +28,10 @@ extension RowTint {
 
     var meaning: String {
         switch self {
-        case .urgent: return "Needs your permission — you haven't opened it yet"
-        case .waiting: return "Finished its turn — you haven't opened it yet"
-        case .owed: return "You've opened it, but it still needs your answer"
+        case .urgent: return "Blocked — needs your permission before it can go on"
+        case .waiting: return "Finished, and asking what's next — you haven't opened it"
+        case .owed: return "You opened it, but it's still waiting on your answer"
+        case .settled: return "Finished, and not asking for anything"
         case .working: return "Claude is working; nothing is needed from you"
         }
     }
@@ -190,15 +192,15 @@ enum Legend {
         menu.delegate = highlighting
 
         menu.addItem(heading("The name, dot and time on each row"))
-        for tint in [RowTint.urgent, .waiting, .owed, .working] {
+        for tint in [RowTint.urgent, .waiting, .owed, .settled, .working] {
             menu.addItem(sample(tint.glyph, "4m", tint.meaning, color: tint.color))
         }
 
         menu.addItem(.separator())
         menu.addItem(heading("The menu bar icon"))
-        menu.addItem(sample(">_", "2 · 4m", "A tab needs permission; 2 are waiting",
+        menu.addItem(sample(">_", "2 · 4m", "A tab is blocked on permission; 2 are waiting",
                             color: RowTint.urgent.color))
-        menu.addItem(sample(">_", "1 · 2m", "A tab has finished and is waiting on you",
+        menu.addItem(sample(">_", "1 · 2m", "A tab is asking what's next",
                             color: RowTint.waiting.color))
         menu.addItem(sample(">_", "2", "2 tabs you opened still need an answer",
                             color: RowTint.owed.color))

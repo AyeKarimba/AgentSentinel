@@ -191,10 +191,12 @@ final class SessionRowView: NSView {
 
     /// The tint as applied to words rather than to the dot.
     ///
-    /// Once every state had a real colour this stopped needing a special case: the grey it used
-    /// to rescue — a name set in `tertiaryLabelColor`, which reads as damage rather than
-    /// de-emphasis — no longer appears on any row.
-    private var tintTextColor: NSColor { tintColor }
+    /// A 10pt glyph carries `tertiaryLabelColor` fine; a name and a number you have to read do
+    /// not — at that weight it reads as damage rather than as de-emphasis. Settled lettering
+    /// therefore steps up to the secondary grey, which is still unmistakably grey.
+    private var tintTextColor: NSColor {
+        tint == .settled ? .secondaryLabelColor : tintColor
+    }
 
     private var isSilenced: Bool { isMuted || snoozeRemaining != nil }
 

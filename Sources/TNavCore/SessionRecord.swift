@@ -15,8 +15,15 @@ public enum WaitReason: String, Codable, Sendable {
     /// notification types Claude Code may add later — unknown means urgent, not ignored.
     case permission = "permission"
 
+    /// Only a permission request is urgent: it is the one state where Claude is *blocked* and
+    /// cannot proceed without an answer.
+    ///
+    /// `idlePrompt` used to count as urgent, which quietly wrecked the whole colour scheme.
+    /// Claude Code emits it about a minute after a turn ends, as a reminder that it is waiting
+    /// — so every finished turn started amber and turned red sixty seconds later, and amber
+    /// effectively did not exist. It is the same state as `turnComplete`, only older.
     public var urgency: Urgency {
-        self == .turnComplete ? .normal : .urgent
+        self == .permission ? .urgent : .normal
     }
 
     public var label: String {
@@ -87,6 +94,38 @@ public struct SessionRecord: Codable, Equatable, Sendable {
     }
 
     public var urgency: Urgency { reason?.urgency ?? .normal }
+
+    /// Whether Claude's closing message looks like it hands the next move back to the user.
+    ///
+    /// This is the only guess in the colour system, and it exists because the hook cannot tell
+    /// these apart: "I've committed the changes." and "Committed — shall I update the tests?"
+    /// arrive as the identical event, `Stop` with `turn_complete`. The message text is the only
+    /// thing left to read.
+    ///
+    /// It will be wrong sometimes. A courteous "Anything else?" reads as a request when nothing
+    /// is really needed, and "Next I'd suggest running the migration" reads as inert when it is
+    /// not. The bias is deliberate: **anything unclear counts as inviting a reply**, because a
+    /// tab wrongly coloured orange costs a glance, while a tab wrongly greyed is one you never
+    /// come back to.
+    var invitesReply: Bool {
+        // A blocking request always wants something, whatever the text says.
+        guard reason != .permission else { return true }
+        guard let message = lastAssistantMessage?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+              !message.isEmpty
+        else { return true }   // nothing to read: assume it wants you
+
+        if message.hasSuffix("?") { return true }
+        let lowered = message.lowercased()
+        return Self.replyInvitations.contains { lowered.contains($0) }
+    }
+
+    /// Phrases that hand the decision back without necessarily ending in a question mark.
+    /// Deliberately short: every addition is another way to be confidently wrong.
+    private static let replyInvitations = [
+        "should i", "shall i", "want me to", "would you like", "do you want",
+        "let me know", "your call", "up to you", "or should", "which would",
+    ]
 
     /// The moment this tab last had something new to say — the wait start, or the later moment
     /// its reason changed. What "have you looked at it" is measured against; `since` is what

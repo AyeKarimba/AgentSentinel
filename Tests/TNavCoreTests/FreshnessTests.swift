@@ -46,9 +46,17 @@ final class FreshnessTests: XCTestCase {
 
     // MARK: - Row tint
 
-    func testUnreadBlockingRequestReadsUrgent() {
+    func testOnlyABlockedTabReadsUrgent() {
         XCTAssertEqual(record(reason: .permission).tint(lastVisit: nil), .urgent)
-        XCTAssertEqual(record(reason: .idlePrompt).tint(lastVisit: nil), .urgent)
+        // idle_prompt is Claude Code reminding you it is waiting, roughly a minute after a turn
+        // ends. Treating it as urgent turned every finished turn red once that timer fired, so
+        // amber only existed for the first sixty seconds and the two were indistinguishable.
+        XCTAssertEqual(record(reason: .idlePrompt).tint(lastVisit: nil), .waiting)
+    }
+
+    func testABlockedTabStaysUrgentEvenAfterYouOpenIt() {
+        XCTAssertEqual(record(reason: .permission).tint(lastVisit: 1001), .urgent,
+                       "reading a permission request does not unblock it")
     }
 
     func testUnreadTurnCompletionReadsWaiting() {
@@ -58,10 +66,7 @@ final class FreshnessTests: XCTestCase {
     func testOpeningTheTabMovesItToOwedRatherThanSilent() {
         // Opening it is not answering it. The alert stops, because you have seen it; the colour
         // is what keeps holding the tab until you actually reply.
-        XCTAssertEqual(record(reason: .permission).tint(lastVisit: 1001), .owed)
-        XCTAssertEqual(record(reason: .turnComplete).tint(lastVisit: 1001), .owed,
-                       "a finished turn you opened and left is owed too — a turn completion is "
-                       + "often a question, and the hook cannot tell us which")
+        XCTAssertEqual(record(reason: .turnComplete).tint(lastVisit: 1001), .owed)
     }
 
     func testWorkingRowsReadAsWorkingRatherThanSettled() {
@@ -73,10 +78,31 @@ final class FreshnessTests: XCTestCase {
                        "whether you have visited is irrelevant — nothing is being asked of you")
     }
 
-    func testWorkingIsTheOnlyStateThatOwesNothing() {
-        XCTAssertEqual(record(reason: nil, state: .working).tint(lastVisit: nil), .working)
-        XCTAssertEqual(record(reason: .permission).tint(lastVisit: 1001), .owed,
-                       "every waiting row owes something; only a working one does not")
+    // MARK: - Asking versus merely finished
+
+    /// The one guess in the system: `Stop` reports a turn that ended with a question and one
+    /// that ended with a full stop identically, so the message text is all there is to read.
+    func testAFinishedTurnThatAsksSomethingIsDistinguishedFromOneThatDoesNot() {
+        func tint(_ message: String?) -> RowTint {
+            SessionRecord(sessionId: "s", tty: "/dev/ttys003", pid: 1, cwd: "/Users/you/p",
+                          state: .waiting, reason: .turnComplete, since: 1000,
+                          lastAssistantMessage: message).tint(lastVisit: nil)
+        }
+        XCTAssertEqual(tint("Should I also update the tests?"), .waiting)
+        XCTAssertEqual(tint("Want me to push that too"), .waiting, "no question mark, still asks")
+        XCTAssertEqual(tint("Committed as 1ac23c5 — three files."), .settled)
+    }
+
+    func testAnythingUnreadableCountsAsAsking() {
+        func tint(_ message: String?) -> RowTint {
+            SessionRecord(sessionId: "s", tty: "/dev/ttys003", pid: 1, cwd: "/Users/you/p",
+                          state: .waiting, reason: .turnComplete, since: 1000,
+                          lastAssistantMessage: message).tint(lastVisit: nil)
+        }
+        // Bias on purpose: an extra orange row costs a glance, a wrongly greyed one is a tab
+        // you never go back to.
+        XCTAssertEqual(tint(nil), .waiting)
+        XCTAssertEqual(tint("   "), .waiting)
     }
 
     // MARK: - Refresh cadence

@@ -67,14 +67,23 @@ public struct StatusSummary: Equatable, Sendable {
                 now: Double) {
         let waiting = records.filter { $0.state == .waiting }
         let audible = waiting.filter { !config.isSilenced($0, now: now) }
-        let unread = audible.filter { $0.isUnseen(lastVisit: visits[$0.sessionId]) }
 
-        needsAttentionCount = unread.count
+        // Derived from the row tints rather than recomputed, so the icon can never disagree
+        // with the list it is summarising. That divergence is how "everything is red" happened.
+        let tinted = audible.map { ($0, $0.tint(lastVisit: visits[$0.sessionId])) }
+        let blocked = tinted.filter { $0.1 == .urgent }.map(\.0)
+        let asking = tinted.filter { $0.1 == .waiting }.map(\.0)
+        let owed = tinted.filter { $0.1 == .owed }.map(\.0)
+
+        // Blocked counts here whether or not it has been opened: opening a permission request
+        // does not unblock it, so it never leaves the queue until it is answered.
+        let pressing = blocked + asking
+        needsAttentionCount = pressing.count
         waitingCount = audible.count
-        attendedWaitingCount = audible.count - unread.count
+        attendedWaitingCount = owed.count
         workingCount = records.filter { $0.state == .working }.count
         silencedWaitingCount = waiting.count - audible.count
-        oldestWait = unread.map { $0.elapsed(now: now) }.max()
+        oldestWait = pressing.map { $0.elapsed(now: now) }.max()
         youngestWait = waiting.map { $0.elapsed(now: now) }.min()
 
         // Counted across all waiting sessions: silencing a tab stops the nagging, but a
@@ -86,13 +95,14 @@ public struct StatusSummary: Equatable, Sendable {
         // Paused drops out of the two attention colours but not down to grey: grey now claims
         // there is nothing running at all, and a paused machine full of sessions would be a
         // lie. Pausing stops the nagging; it does not make the work disappear.
-        if !config.paused, unread.contains(where: { $0.urgency == .urgent }) {
+        if !config.paused, !blocked.isEmpty {
             tint = .urgent
-        } else if !config.paused, !unread.isEmpty {
+        } else if !config.paused, !asking.isEmpty {
             tint = .waiting
-        } else if audible.count > unread.count {
+        } else if !owed.isEmpty {
             // Opened and unanswered. Below the two attention colours because it has already
-            // been seen, above working because it is still waiting on the user.
+            // been seen, above working because it is still waiting on the user. Survives pause,
+            // which silences nagging — and this one is not nagging, it is just remembering.
             tint = .owed
         } else if !records.isEmpty {
             tint = .working
