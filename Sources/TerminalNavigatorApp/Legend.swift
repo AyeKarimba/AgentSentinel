@@ -218,6 +218,7 @@ enum Legend {
 
         menu.addItem(.separator())
         menu.addItem(heading("Clicking a row jumps to that tab, which marks it opened"))
+        menu.addItem(heading("⌘-click a row to forget it, if it outlived its session"))
 
         return menu
     }

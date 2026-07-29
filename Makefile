@@ -26,8 +26,10 @@ app:
 build:
 	swift build -c release
 
+# Against a scratch state directory: some library code writes to the event log, and unit tests
+# have no business appending to the user's real ~/.claude/tnav.
 test:
-	swift test
+	TNAV_STATE_DIR="$$(mktemp -d)" swift test
 
 check: test
 	@./scripts/integration-test.sh

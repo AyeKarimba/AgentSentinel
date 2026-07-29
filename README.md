@@ -162,6 +162,13 @@ Click any row to jump to that tab, or click a banner to go straight to the tab t
 The controls on each row snooze it for 10 minutes (⌥-click for 30) or mute that tab entirely.
 `⌥⌘J` jumps to the oldest tab waiting on you.
 
+**⌘-click a row to forget it.** Records normally clean themselves up — a session that ends fires
+a hook, and one whose process is gone gets pruned. The exception is a record that outlives its
+session while still naming a live pid: the liveness check passes, so it never prunes, and the tab
+it names belongs to someone else, so it can't be jumped to either. Duplicate pids are now pruned
+automatically, and ⌘-click covers whatever that misses. Forgetting a session that is genuinely
+alive is harmless — it reappears on its next event.
+
 There's also a CLI:
 
 ```sh
@@ -194,7 +201,7 @@ the hook, state and UI layers don't change.
 ## Development
 
 ```sh
-make test        # 137 unit tests
+make test        # 141 unit tests
 make check       # unit tests + the hook integration test
 make run         # run from source, without installing
 make app         # build the .app into ./build without installing

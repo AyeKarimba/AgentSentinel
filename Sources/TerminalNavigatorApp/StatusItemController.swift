@@ -366,7 +366,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             now: now,
             onJump: { [weak self] record in self?.jump(to: record) },
             onToggleMute: { [weak self] record in self?.toggleMute(record) },
-            onToggleSnooze: { [weak self] record in self?.toggleSnooze(record) }
+            onToggleSnooze: { [weak self] record in self?.toggleSnooze(record) },
+            onForget: { [weak self] record in self?.monitor.forget(record) }
         )
         return item
     }

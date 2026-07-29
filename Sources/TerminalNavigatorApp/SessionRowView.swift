@@ -29,6 +29,7 @@ final class SessionRowView: NSView {
     private let onJump: (SessionRecord) -> Void
     private let onToggleMute: (SessionRecord) -> Void
     private let onToggleSnooze: (SessionRecord) -> Void
+    private let onForget: (SessionRecord) -> Void
 
     private let statusDot = NSTextField(labelWithString: "")
     private let unseenDot = NSTextField(labelWithString: "")
@@ -59,7 +60,8 @@ final class SessionRowView: NSView {
          now: Double,
          onJump: @escaping (SessionRecord) -> Void,
          onToggleMute: @escaping (SessionRecord) -> Void,
-         onToggleSnooze: @escaping (SessionRecord) -> Void) {
+         onToggleSnooze: @escaping (SessionRecord) -> Void,
+         onForget: @escaping (SessionRecord) -> Void) {
         self.record = record
         self.isMuted = isMuted
         self.snoozeRemaining = snoozeRemaining
@@ -69,6 +71,7 @@ final class SessionRowView: NSView {
         self.onJump = onJump
         self.onToggleMute = onToggleMute
         self.onToggleSnooze = onToggleSnooze
+        self.onForget = onForget
         super.init(frame: NSRect(x: 0, y: 0, width: Self.rowWidth, height: Self.rowHeight))
         build()
     }
@@ -293,6 +296,13 @@ final class SessionRowView: NSView {
             return
         }
         enclosingMenuItem?.menu?.cancelTracking()
+        // Command-click forgets the row instead of jumping to it. The escape hatch for a record
+        // that outlived its session: it cannot be jumped to, and nothing else will remove it.
+        // Command rather than option, which the snooze control already uses for its longer nap.
+        if event.modifierFlags.contains(.command) {
+            onForget(record)
+            return
+        }
         onJump(record)
     }
 
