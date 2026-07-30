@@ -22,13 +22,11 @@ final class StatusSummaryTests: XCTestCase {
         XCTAssertEqual(summary.accessibilityDescription, "No Claude sessions need you")
     }
 
-    func testWorkingSessionsAreNotCountedAsWaitingButAreReported() {
+    func testWorkingSessionsAreNotCounted() {
         let records = [record(id: "a", state: .working, reason: nil, since: 900)]
         let summary = StatusSummary(records: records, config: Config(), now: 1000)
-        XCTAssertEqual(summary.waitingCount, 0, "nothing is waiting on the user")
-        XCTAssertEqual(summary.workingCount, 1)
-        XCTAssertEqual(summary.badgeText, "1",
-                       "with nothing waiting the badge reports what is running instead")
+        XCTAssertEqual(summary.waitingCount, 0)
+        XCTAssertNil(summary.badgeText)
     }
 
     func testBadgeShowsCountAndLongestWait() {
@@ -99,8 +97,6 @@ final class StatusSummaryTests: XCTestCase {
         let blocked = record(id: "b", reason: .permission, since: 900, tty: "/dev/ttys009")
 
         XCTAssertEqual(tint([]), .idle, "no sessions at all")
-        XCTAssertEqual(tint([busy, blocked], ["b": 999]), .working,
-                       "opened, so it stops driving the icon")
         XCTAssertEqual(tint([busy]), .working, "Claude is running, nothing wants you")
         XCTAssertEqual(tint([busy, finished]), .waiting, "one has finished and is waiting")
         XCTAssertEqual(tint([busy, finished, blocked]), .urgent, "one is blocked on permission")

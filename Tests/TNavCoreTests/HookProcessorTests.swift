@@ -71,12 +71,9 @@ final class HookProcessorTests: XCTestCase {
 
     // MARK: - Reason mapping
 
-    func testIdlePromptMapsToIdleReasonAndIsNotUrgent() {
+    func testIdlePromptMapsToIdleReasonAndIsUrgent() {
         XCTAssertEqual(HookProcessor.waitReason(forNotificationType: "idle_prompt"), .idlePrompt)
-        XCTAssertEqual(WaitReason.idlePrompt.urgency, .normal,
-                       "it is a reminder that Claude is waiting, not a new thing blocking it — "
-                       + "only a permission request stops Claude from proceeding")
-        XCTAssertEqual(WaitReason.permission.urgency, .urgent)
+        XCTAssertEqual(WaitReason.idlePrompt.urgency, .urgent)
     }
 
     func testUnknownNotificationTypeIsTreatedAsUrgentNotIgnored() {
@@ -149,9 +146,8 @@ final class HookProcessorTests: XCTestCase {
         XCTAssertTrue(record.notified, "same urgency should not re-notify")
     }
 
-    func testTheIdleReminderDoesNotReArmTheNotification() throws {
+    func testUrgencyClimbFromTurnCompleteToIdleReArmsNotification() throws {
         // Real sequence: Stop fires, then 60s later Claude Code emits the idle notification.
-        // Same state, only older — so it must not ping again.
         let existing = waiting(reason: .turnComplete, since: 500, notified: true, escalated: true)
         let outcome = HookProcessor.apply(payload: try payload("Notification", notificationType: "idle_prompt"),
                                          identity: identity,
@@ -159,20 +155,8 @@ final class HookProcessorTests: XCTestCase {
                                          now: 560)
         guard case .updated(let record) = outcome else { return XCTFail("expected update") }
         XCTAssertEqual(record.reason, .idlePrompt)
-        XCTAssertEqual(record.since, 500, "wait started at the Stop, not the reminder")
-        XCTAssertTrue(record.notified, "no urgency climb, so nothing to announce again")
-    }
-
-    func testBecomingBlockedDoesReArmTheNotification() throws {
-        // A real climb: finished, then Claude hit something it needs permission for.
-        let existing = waiting(reason: .turnComplete, since: 500, notified: true, escalated: true)
-        let outcome = HookProcessor.apply(payload: try payload("Notification", notificationType: "permission_prompt"),
-                                         identity: identity,
-                                         existing: existing,
-                                         now: 560)
-        guard case .updated(let record) = outcome else { return XCTFail("expected update") }
-        XCTAssertEqual(record.reason, .permission)
-        XCTAssertFalse(record.notified, "it is blocked now; that is worth saying again")
+        XCTAssertEqual(record.since, 500, "wait started at the Stop, not the escalation")
+        XCTAssertFalse(record.notified, "climbing to urgent should ping again")
         XCTAssertFalse(record.escalated)
     }
 

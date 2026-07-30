@@ -31,12 +31,8 @@ final class SessionMonitor {
     /// TTY of the tab the user is looking at, or nil when Terminal isn't frontmost.
     private(set) var frontmostTTY: String?
 
-    /// Called on the main queue whenever the visible state may have changed. Fires early, so
-    /// the menu never waits on anything slow.
+    /// Called on the main queue whenever the visible state may have changed.
     var onChange: (() -> Void)?
-    /// Called once per pass, after the frontmost-tab poll, when everything alerting depends on
-    /// is current. Deliberately separate from `onChange`, which runs before that poll.
-    var onAlertCheck: (() -> Void)?
 
     init(store: SessionStore = SessionStore(),
          configStore: ConfigStore = ConfigStore(),
@@ -98,10 +94,6 @@ final class SessionMonitor {
             // its place in the order — cheap to redo, and only when something actually moved.
             apply(live)
         }
-        // Only now, with the frontmost tab and the visits current. Running this from `apply`
-        // would evaluate against the previous pass's poll, and the case it gets wrong is the
-        // one that matters: the instant the user switches into the tab that is waiting.
-        onAlertCheck?()
         scheduleRefresh(after: policy.interval)
     }
 
@@ -184,18 +176,6 @@ final class SessionMonitor {
     func noteVisit(sessionId: String) {
         visitStore.markVisited(sessionId: sessionId)
         apply(records)
-    }
-
-    /// Drops a record from the menu.
-    ///
-    /// Safe by construction rather than by care: a session that is genuinely alive rewrites its
-    /// record on its next hook event, so forgetting one is at worst temporary. Only a record
-    /// with nothing behind it stays gone — which is precisely the one the user is trying to
-    /// remove, and the case that had no remedy at all before.
-    func forget(_ record: SessionRecord) {
-        EventLog.append("forget: \(record.project) (\(record.tty)) dismissed by hand")
-        store.remove(record.sessionId)
-        reload()
     }
 
     func snooze(_ record: SessionRecord, seconds: Double) {

@@ -11,8 +11,6 @@ public enum AlertDecision: Equatable, Sendable {
     case suppressNonBlocking
     /// You are already looking at this tab, so there is nothing to route you to.
     case suppressAlreadyFocused
-    /// You have been in this tab since it started waiting, so you already know.
-    case suppressAlreadySeen
     case suppressAlreadyNotified
 
     public var shouldAlert: Bool {
@@ -30,14 +28,11 @@ public enum AlertDecision: Equatable, Sendable {
 /// silences (mute, snooze, pause) come first, so nothing — not even escalation — can talk over
 /// a tab the user has explicitly parked.
 public enum AlertPolicy {
-    /// - Parameters:
-    ///   - frontmostTTY: TTY of the tab the user is currently looking at, or nil when the
-    ///     terminal app isn't frontmost.
-    ///   - lastVisit: when the user was last in this tab, or nil if never.
+    /// - Parameter frontmostTTY: TTY of the tab the user is currently looking at, or nil when
+    ///   the terminal app isn't frontmost.
     public static func decide(record: SessionRecord,
                               config: Config,
                               frontmostTTY: String?,
-                              lastVisit: Double? = nil,
                               now: Double) -> AlertDecision {
         guard record.state == .waiting else { return .suppressNotWaiting }
         if config.isMuted(record) { return .suppressMuted }
@@ -49,16 +44,6 @@ public enum AlertPolicy {
         if config.blockingOnly, record.reason != .permission { return .suppressNonBlocking }
 
         if let frontmostTTY, frontmostTTY == record.tty { return .suppressAlreadyFocused }
-
-        // Knowing which tab is frontmost costs an Apple Event, so it is sampled rather than
-        // continuous and is stale exactly when it matters most — the instant you switch into a
-        // tab. Visits are recorded from that same sampling but persist, so "have you been in
-        // here since it started waiting" answers the same question without the race.
-        //
-        // This is also what draws the line between the two signals: an alert is for something
-        // you have not seen. A tab you have seen and not finished is the row colour's problem,
-        // not something to interrupt you about again.
-        if !record.isUnseen(lastVisit: lastVisit) { return .suppressAlreadySeen }
 
         if !record.notified { return .notify(record.urgency) }
 

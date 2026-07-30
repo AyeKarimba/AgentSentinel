@@ -46,12 +46,9 @@ final class FreshnessTests: XCTestCase {
 
     // MARK: - Row tint
 
-    func testOnlyABlockedTabReadsUrgent() {
+    func testUnreadBlockingRequestReadsUrgent() {
         XCTAssertEqual(record(reason: .permission).tint(lastVisit: nil), .urgent)
-        // idle_prompt is Claude Code reminding you it is waiting, roughly a minute after a turn
-        // ends. Treating it as urgent turned every finished turn red once that timer fired, so
-        // amber only existed for the first sixty seconds and the two were indistinguishable.
-        XCTAssertEqual(record(reason: .idlePrompt).tint(lastVisit: nil), .waiting)
+        XCTAssertEqual(record(reason: .idlePrompt).tint(lastVisit: nil), .urgent)
     }
 
     func testUnreadTurnCompletionReadsWaiting() {
@@ -73,6 +70,10 @@ final class FreshnessTests: XCTestCase {
                        "whether you have visited is irrelevant — nothing is being asked of you")
     }
 
+    func testOnlyAnUnansweredWaitReadsAsSettled() {
+        XCTAssertEqual(record(reason: .permission).tint(lastVisit: 1001), .settled)
+        XCTAssertEqual(record(reason: .turnComplete).tint(lastVisit: 1001), .settled)
+    }
 
     // MARK: - Refresh cadence
 

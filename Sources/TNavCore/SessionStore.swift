@@ -97,33 +97,7 @@ public final class SessionStore {
                 remove(record.sessionId)
             }
         }
-        return dropStaleDuplicates(alive)
-    }
-
-    /// Drops records that share a pid with a newer one.
-    ///
-    /// `isAlive` cannot catch these. One `claude` process serves one session, so two records
-    /// claiming the same pid means at least one is stale — but the pid *is* alive and its tty
-    /// *does* match, so the liveness check passes and the stale one sits in the menu forever.
-    /// It cannot be jumped to, because the tab it names belongs to the other session, and until
-    /// now there was no way to get rid of it.
-    ///
-    /// Ties break on `since`, keeping the most recently active. That can pick wrong when a real
-    /// session has been waiting longer than the stale record has existed — which is acceptable
-    /// because it self-corrects: a live session rewrites its record on its next hook event,
-    /// while a stale one never comes back.
-    private func dropStaleDuplicates(_ records: [SessionRecord]) -> [SessionRecord] {
-        var newestByPID: [Int32: SessionRecord] = [:]
-        for record in records {
-            if let existing = newestByPID[record.pid], existing.since >= record.since { continue }
-            newestByPID[record.pid] = record
-        }
-        let keep = Set(newestByPID.values.map(\.sessionId))
-        for record in records where !keep.contains(record.sessionId) {
-            EventLog.append("pruned \(record.sessionId): pid \(record.pid) belongs to another session")
-            remove(record.sessionId)
-        }
-        return records.filter { keep.contains($0.sessionId) }
+        return alive
     }
 
     public enum StoreError: Error, CustomStringConvertible {

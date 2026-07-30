@@ -12,7 +12,7 @@ extension RowTint {
         case .urgent: return .systemRed
         case .waiting: return .systemOrange
         case .working: return .royalPurple
-        case .settled: return .tertiaryLabelColor
+        case .settled: return .settledGrey
         }
     }
 
@@ -30,7 +30,7 @@ extension RowTint {
         case .urgent: return "Needs your permission — you haven't opened it yet"
         case .waiting: return "Finished its turn — you haven't opened it yet"
         case .settled: return "You've opened it; still waiting on your reply"
-        case .working: return "Claude is working; nothing is needed from you"
+        case .working: return "Claude is working in this tab"
         }
     }
 }
@@ -49,6 +49,10 @@ extension NSColor {
             : NSColor(srgbRed: 0.471, green: 0.318, blue: 0.663, alpha: 1)   // #7851A9
     }
 
+    /// The dot's grey. Kept distinct from the lettering's `secondaryLabelColor`: tertiary is
+    /// right for a 10pt glyph and too faint for words you have to read.
+    static let settledGrey = NSColor.tertiaryLabelColor
+
     /// Purple for the menu bar icon, deliberately more saturated than `royalPurple`.
     ///
     /// The row purple is tuned against the dropdown's dark translucent background, where it
@@ -61,8 +65,8 @@ extension NSColor {
     /// stroke over an arbitrary background.
     static let menuBarPurple = NSColor(name: "menuBarPurple") { appearance in
         appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-            ? NSColor(srgbRed: 0.659, green: 0.333, blue: 0.969, alpha: 1) // #A855F7
-            : NSColor(srgbRed: 0.420, green: 0.129, blue: 0.659, alpha: 1) // #6B21A8
+            ? NSColor(srgbRed: 0.776, green: 0.494, blue: 1.0, alpha: 1)   // #C67EFF
+            : NSColor(srgbRed: 0.478, green: 0.216, blue: 0.788, alpha: 1) // #7A37C9
     }
 
     /// Deep gold, for the legend entry itself.
@@ -86,8 +90,9 @@ extension NSColor {
     /// a dynamic colour reports the same name whichever appearance it was resolved under.
     var colorNameForDump: String {
         let named: [(String, NSColor)] = [
-            ("red", .systemRed), ("orange", .systemOrange), ("purple", .royalPurple), ("menubar-purple", .menuBarPurple), ("gold", .deepGold),
-            ("grey", .tertiaryLabelColor), ("grey", .secondaryLabelColor), ("label", .labelColor),
+            ("red", .systemRed), ("orange", .systemOrange), ("purple", .royalPurple),
+            ("gold", .deepGold), ("grey", .tertiaryLabelColor), ("grey", .secondaryLabelColor),
+            ("label", .labelColor),
         ]
         for (name, candidate) in named where candidate == self { return name }
         return "?"
@@ -181,12 +186,12 @@ enum Legend {
 
         menu.addItem(.separator())
         menu.addItem(heading("The menu bar icon"))
-        menu.addItem(sample(">_", "2 · 4m", "2 tabs need you; the oldest has waited 4m",
+        menu.addItem(sample(">_", "2 · 4m", "A tab needs permission; 2 are waiting",
                             color: RowTint.urgent.color))
         menu.addItem(sample(">_", "1 · 2m", "A tab has finished and is waiting on you",
                             color: RowTint.waiting.color))
-        menu.addItem(sample(">_", "3", "3 tabs are working; nothing wants you",
-                            color: .menuBarPurple))
+        menu.addItem(sample(">_", "", "Claude is running; nothing wants you",
+                            color: RowTint.working.color))
         menu.addItem(sample(">_", "", "No Claude sessions at all",
                             color: .secondaryLabelColor))
         menu.addItem(sample("●", "", "Unopened request in a muted or snoozed tab",
@@ -199,7 +204,6 @@ enum Legend {
 
         menu.addItem(.separator())
         menu.addItem(heading("Clicking a row jumps to that tab, which marks it opened"))
-        menu.addItem(heading("⌘-click a row to forget it, if it outlived its session"))
 
         return menu
     }

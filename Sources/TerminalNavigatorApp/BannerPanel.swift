@@ -94,12 +94,6 @@ final class BannerPanel {
 private final class BannerView: NSView {
     private let action: () -> Void
 
-    /// Equal on all four sides. The banner is one short block of text, so anything uneven reads
-    /// as a mistake rather than as emphasis.
-    private static let inset: CGFloat = 15
-    private static let dotWidth: CGFloat = 12
-    private static let dotSpacing: CGFloat = 10
-
     init(record: SessionRecord, tint: RowTint, message: String?,
          width: Double, titleSize: Double, bodySize: Double, action: @escaping () -> Void) {
         self.action = action
@@ -125,9 +119,7 @@ private final class BannerView: NSView {
         body.textColor = .labelColor
         body.maximumNumberOfLines = 3
         body.isSelectable = false
-        // The exact width the label will actually get. Derived rather than guessed, because it
-        // is what decides how many lines the text wraps to, and therefore the banner's height.
-        body.preferredMaxLayoutWidth = width - Self.inset * 2 - Self.dotWidth - Self.dotSpacing
+        body.preferredMaxLayoutWidth = width - 60
 
         let dot = NSTextField(labelWithString: tint.glyph)
         dot.font = .systemFont(ofSize: titleSize - 2)
@@ -140,50 +132,30 @@ private final class BannerView: NSView {
 
         let row = NSStackView(views: [dot, text])
         row.orientation = .horizontal
-        // Sits the dot on the title's baseline rather than on the box's top edge, which is where
-        // top alignment puts it and where it looks a fraction high.
-        row.alignment = .firstBaseline
-        row.spacing = Self.dotSpacing
-        // Padding comes from the pin constants below, never from `edgeInsets`. `NSStackView`
-        // does not report its insets fully through `fittingSize` — measured, a horizontal stack
-        // counted 15 of 30 vertical points with baseline or top alignment, and none at all with
-        // centre alignment. Sizing a window from that is what clipped the last line.
+        row.alignment = .top
+        row.spacing = 10
+        row.edgeInsets = NSEdgeInsets(top: 14, left: 16, bottom: 14, right: 16)
 
-        // Generous to begin with, so pinning the row to both top and bottom has slack to satisfy
-        // rather than an immediate conflict to resolve. The real height is measured below.
-        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 400))
+        row.translatesAutoresizingMaskIntoConstraints = false
+        let height = row.fittingSize.height
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: max(64, height)))
 
-        let background = NSVisualEffectView()
+        let background = NSVisualEffectView(frame: bounds)
         background.material = .popover
         background.blendingMode = .behindWindow
         background.state = .active
         background.wantsLayer = true
         background.layer?.cornerRadius = 12
         background.layer?.masksToBounds = true
-        background.translatesAutoresizingMaskIntoConstraints = false
+        background.autoresizingMask = [.width, .height]
         addSubview(background)
+
         addSubview(row)
-
         NSLayoutConstraint.activate([
-            // Pinned on all four sides. The previous version pinned only `centerY`, so the row's
-            // height was never tied to the view: when the text needed more room than the frame
-            // had, it overflowed past both edges and the bottom line was clipped.
-            row.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.inset),
-            row.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.inset),
-            row.topAnchor.constraint(equalTo: topAnchor, constant: Self.inset),
-            row.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.inset),
-            dot.widthAnchor.constraint(equalToConstant: Self.dotWidth),
-            background.leadingAnchor.constraint(equalTo: leadingAnchor),
-            background.trailingAnchor.constraint(equalTo: trailingAnchor),
-            background.topAnchor.constraint(equalTo: topAnchor),
-            background.bottomAnchor.constraint(equalTo: bottomAnchor),
+            row.leadingAnchor.constraint(equalTo: leadingAnchor),
+            row.trailingAnchor.constraint(equalTo: trailingAnchor),
+            row.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
-
-        // Only now is this the true height: the row is in a hierarchy, it has a width, and the
-        // wrapping label has therefore settled on its real number of lines. Measuring before any
-        // of that — which is what the first version did — reported a single line every time.
-        layoutSubtreeIfNeeded()
-        setFrameSize(NSSize(width: width, height: ceil(fittingSize.height)))
     }
 
     @available(*, unavailable)

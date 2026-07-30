@@ -41,9 +41,6 @@ public struct StatusSummary: Equatable, Sendable {
     /// Waiting sessions the user has already opened. They stay in the menu; they have just
     /// stopped asking for anything.
     public let attendedWaitingCount: Int
-    /// Sessions Claude is actively running in. What the badge reports when nothing wants you —
-    /// the colour says the machine is alive, this says how much of it is.
-    public let workingCount: Int
     /// Blocking requests the user has not yet been present for, anywhere.
     public let unseenUrgentCount: Int
     /// The subset of those sitting in a silenced tab — the one thing the badge structurally
@@ -61,17 +58,13 @@ public struct StatusSummary: Equatable, Sendable {
                 now: Double) {
         let waiting = records.filter { $0.state == .waiting }
         let audible = waiting.filter { !config.isSilenced($0, now: now) }
+        let unread = audible.filter { $0.isUnseen(lastVisit: visits[$0.sessionId]) }
 
-        // Derived from the row tints rather than recomputed, so the icon can never disagree
-        // with the list it is summarising. That divergence is how "everything is red" happened.
-        let tinted = audible.map { ($0, $0.tint(lastVisit: visits[$0.sessionId])) }
-        let pressing = tinted.filter { $0.1 == .urgent || $0.1 == .waiting }.map(\.0)
-        needsAttentionCount = pressing.count
+        needsAttentionCount = unread.count
         waitingCount = audible.count
-        attendedWaitingCount = audible.count - pressing.count
-        workingCount = records.filter { $0.state == .working }.count
+        attendedWaitingCount = audible.count - unread.count
         silencedWaitingCount = waiting.count - audible.count
-        oldestWait = pressing.map { $0.elapsed(now: now) }.max()
+        oldestWait = unread.map { $0.elapsed(now: now) }.max()
         youngestWait = waiting.map { $0.elapsed(now: now) }.min()
 
         // Counted across all waiting sessions: silencing a tab stops the nagging, but a
@@ -83,9 +76,9 @@ public struct StatusSummary: Equatable, Sendable {
         // Paused drops out of the two attention colours but not down to grey: grey now claims
         // there is nothing running at all, and a paused machine full of sessions would be a
         // lie. Pausing stops the nagging; it does not make the work disappear.
-        if !config.paused, pressing.contains(where: { $0.urgency == .urgent }) {
+        if !config.paused, unread.contains(where: { $0.urgency == .urgent }) {
             tint = .urgent
-        } else if !config.paused, !pressing.isEmpty {
+        } else if !config.paused, !unread.isEmpty {
             tint = .waiting
         } else if !records.isEmpty {
             tint = .working
@@ -98,12 +91,8 @@ public struct StatusSummary: Equatable, Sendable {
     /// how long the oldest of them has been. Nil once the queue empties, which is how the item
     /// renders as a bare dimmed glyph with no timestamp at all.
     public var badgeText: String? {
-        if needsAttentionCount > 0, let oldestWait {
-            return "\(needsAttentionCount) · \(Elapsed.short(oldestWait))"
-        }
-        // Nothing wants you, so report what is running instead. The colour already says the
-        // machine is alive; this says how much of it is.
-        return workingCount > 0 ? "\(workingCount)" : nil
+        guard needsAttentionCount > 0, let oldestWait else { return nil }
+        return "\(needsAttentionCount) · \(Elapsed.short(oldestWait))"
     }
 
     /// Whether to draw the dot beside the glyph.

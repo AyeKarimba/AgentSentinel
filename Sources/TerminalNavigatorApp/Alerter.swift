@@ -31,7 +31,6 @@ final class Alerter {
     func evaluate(records: [SessionRecord],
                   config: Config,
                   frontmostTTY: String?,
-                  visits: [String: Double],
                   showLastMessage: Bool,
                   now: Double = Date().timeIntervalSince1970) {
         for record in records {
@@ -42,8 +41,7 @@ final class Alerter {
             view.escalated = store.hasEscalated(record)
 
             switch AlertPolicy.decide(record: view, config: config,
-                                      frontmostTTY: frontmostTTY,
-                                      lastVisit: visits[record.sessionId], now: now) {
+                                      frontmostTTY: frontmostTTY, now: now) {
             case .notify(let urgency):
                 guard primed else {
                     store.adopt(record, escalateAfterSeconds: config.escalateAfterSeconds, now: now)

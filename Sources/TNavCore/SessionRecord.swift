@@ -15,15 +15,8 @@ public enum WaitReason: String, Codable, Sendable {
     /// notification types Claude Code may add later — unknown means urgent, not ignored.
     case permission = "permission"
 
-    /// Only a permission request is urgent: it is the one state where Claude is *blocked* and
-    /// cannot proceed without an answer.
-    ///
-    /// `idlePrompt` used to count as urgent, which quietly wrecked the whole colour scheme.
-    /// Claude Code emits it about a minute after a turn ends, as a reminder that it is waiting
-    /// — so every finished turn started amber and turned red sixty seconds later, and amber
-    /// effectively did not exist. It is the same state as `turnComplete`, only older.
     public var urgency: Urgency {
-        self == .permission ? .urgent : .normal
+        self == .turnComplete ? .normal : .urgent
     }
 
     public var label: String {
