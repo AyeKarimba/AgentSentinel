@@ -99,15 +99,14 @@ final class StatusSummaryTests: XCTestCase {
         let blocked = record(id: "b", reason: .permission, since: 900, tty: "/dev/ttys009")
 
         XCTAssertEqual(tint([]), .idle, "no sessions at all")
-        XCTAssertEqual(tint([busy, blocked], ["b": 999]), .urgent,
-                       "opening a blocked tab does not unblock it")
-        XCTAssertEqual(tint([busy, finished], ["f": 999]), .owed, "opened, still unanswered")
+        XCTAssertEqual(tint([busy, blocked], ["b": 999]), .working,
+                       "opened, so it stops driving the icon")
         XCTAssertEqual(tint([busy]), .working, "Claude is running, nothing wants you")
         XCTAssertEqual(tint([busy, finished]), .waiting, "one has finished and is waiting")
         XCTAssertEqual(tint([busy, finished, blocked]), .urgent, "one is blocked on permission")
 
-        XCTAssertEqual(tint([busy, finished, blocked], ["f": 999, "b": 999]), .urgent,
-                       "the blocked one still holds the icon even with both opened")
+        XCTAssertEqual(tint([busy, finished], ["f": 999]), .working,
+                       "opening the finished one drops it back a rung, it does not go grey")
     }
 
     // MARK: - Redraw cadence

@@ -68,19 +68,13 @@ public final class VisitStore {
 /// grey even though it is still waiting for a reply, which is what makes a menu full of
 /// waiting sessions scannable.
 public enum RowTint: String, Equatable, Sendable {
-    /// Finished, and not asking for anything. Nothing is owed and nothing is happening.
+    /// Waiting, but already opened. Still unanswered — you have just seen it.
     case settled
     /// Claude is running in this tab. Nothing is required of the user.
     case working
-    /// Asked you something, and you have opened it without answering.
-    ///
-    /// The tab you looked at, meant to reply to, and left — usually because something louder
-    /// pulled you away. It has stopped alerting, because you have seen it, so this colour is
-    /// the only thing still holding it.
-    case owed
-    /// Asked you something you have not looked at yet.
+    /// An unread turn completion.
     case waiting
-    /// Blocked on a permission request. The only state where Claude cannot proceed at all.
+    /// An unread blocking request.
     case urgent
 }
 
@@ -102,15 +96,11 @@ public extension SessionRecord {
         urgency == .urgent && isUnseen(lastVisit: lastVisit)
     }
 
-    /// Red -> orange -> teal -> grey -> purple, in descending order of what it wants from you.
-    ///
-    /// Red does not decay when opened. A permission request is blocked whether or not you have
-    /// looked at it, and a colour that softened on being read would be describing your
-    /// attention rather than the session's state — it stays red until you answer it.
+    /// Colour answers "have you dealt with this", not "what is this session doing" — the dot
+    /// glyph and the detail text already say the latter.
     func tint(lastVisit: Double?) -> RowTint {
         guard state == .waiting else { return .working }
-        if reason == .permission { return .urgent }
-        guard invitesReply else { return .settled }
-        return isUnseen(lastVisit: lastVisit) ? .waiting : .owed
+        guard isUnseen(lastVisit: lastVisit) else { return .settled }
+        return urgency == .urgent ? .urgent : .waiting
     }
 }

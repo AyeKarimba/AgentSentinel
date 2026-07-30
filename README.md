@@ -14,18 +14,17 @@ itself, so nobody has to memorise it:
 
 <img src="docs/legend.png" alt="The App Legend submenu, listing every colour and marker with its meaning" width="470">
 
-Each row is coloured by what it wants from you, not by what it's doing:
+Colour answers *have you dealt with this*, not *what is it doing*:
 
 | | |
 |---|---|
-| **red** | blocked on a permission request — Claude can't go on until you answer |
-| **orange** | finished, and asking what's next — you haven't opened it |
-| **teal** | you opened it, and it's still waiting on your answer |
-| **grey** | finished, and not asking for anything |
+| **red** | needs your permission — you haven't opened it yet |
+| **orange** | finished its turn — you haven't opened it yet |
+| **grey** | you've opened it; still waiting on your reply |
 | **purple** | Claude is working; nothing is needed from you |
 
-Red never softens by being read: opening a permission request doesn't unblock it, so it stays
-red until you actually answer. Everything else drops a rung once you've looked.
+Open a tab and its row goes quiet — the badge moves to the next one, and disappears once
+nothing is left waiting on you.
 
 The icon follows the same scale, so a glance at the menu bar is enough:
 
@@ -33,24 +32,8 @@ The icon follows the same scale, so a glance at the menu bar is enough:
 |---|---|
 | grey `>_` | no Claude sessions at all |
 | purple `>_ 3` | 3 tabs working; nothing wants you |
-| teal `>_ 2` | 2 tabs you opened still need an answer |
-| orange `>_ 1 · 2m` | a tab is asking what's next |
-| red `>_ 2 · 4m` | a tab is blocked on permission |
-
-<details>
-<summary>The one place this guesses</summary>
-
-Orange and grey are the same event as far as the hook is concerned — both arrive as `Stop`
-with `turn_complete`. "I've committed the changes." and "Committed — shall I update the tests?"
-are indistinguishable to the tooling, so the only thing left to read is the message text.
-
-The rule is: ends in a question mark, or contains one of a short list of phrases
-("should I", "want me to", "let me know", …). It will be wrong sometimes — a courteous
-"Anything else?" reads as a request, and "Next I'd suggest running the migration" doesn't.
-
-The bias is deliberate: **anything unclear counts as asking.** A tab wrongly coloured orange
-costs you a glance; a tab wrongly greyed is one you never come back to.
-</details>
+| orange `>_ 1 · 2m` | a tab has finished and is waiting on you |
+| red `>_ 2 · 4m` | a tab needs your permission |
 
 ## Requirements
 
@@ -201,7 +184,7 @@ the hook, state and UI layers don't change.
 ## Development
 
 ```sh
-make test        # 141 unit tests
+make test        # 138 unit tests
 make check       # unit tests + the hook integration test
 make run         # run from source, without installing
 make app         # build the .app into ./build without installing

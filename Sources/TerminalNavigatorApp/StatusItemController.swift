@@ -230,7 +230,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         switch summary.tint {
         case .idle: tint = .secondaryLabelColor
         case .working: tint = .menuBarPurple
-        case .owed: tint = RowTint.owed.color
         case .waiting: tint = RowTint.waiting.color
         case .urgent: tint = RowTint.urgent.color
         }

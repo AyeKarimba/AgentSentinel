@@ -135,10 +135,8 @@ final class SessionMonitor {
         switch record.tint(lastVisit: visits[record.sessionId]) {
         case .urgent: return 0
         case .waiting: return 1
-        case .owed: return 2
+        case .settled: return 2
         case .working: return 3
-        // Last: finished and asking nothing is the only row with no claim on the user at all.
-        case .settled: return 4
         }
     }
 

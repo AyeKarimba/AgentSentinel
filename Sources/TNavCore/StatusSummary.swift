@@ -15,9 +15,6 @@ public struct StatusSummary: Equatable, Sendable {
         case idle
         /// Sessions are running, and nothing is waiting on the user.
         case working
-        /// Tabs the user has opened but not answered. Quieter than `waiting` — they have
-        /// already been seen, so nothing is alerting about them; this is what still holds them.
-        case owed
         /// Something is waiting, nothing is blocking.
         case waiting
         /// A permission request is blocking a session.
@@ -47,9 +44,6 @@ public struct StatusSummary: Equatable, Sendable {
     /// Sessions Claude is actively running in. What the badge reports when nothing wants you —
     /// the colour says the machine is alive, this says how much of it is.
     public let workingCount: Int
-    /// Waiting sessions the user has opened and not answered. Same set as
-    /// `attendedWaitingCount`, named for what the badge and the icon do with it.
-    public var owedCount: Int { attendedWaitingCount }
     /// Blocking requests the user has not yet been present for, anywhere.
     public let unseenUrgentCount: Int
     /// The subset of those sitting in a silenced tab — the one thing the badge structurally
@@ -71,16 +65,10 @@ public struct StatusSummary: Equatable, Sendable {
         // Derived from the row tints rather than recomputed, so the icon can never disagree
         // with the list it is summarising. That divergence is how "everything is red" happened.
         let tinted = audible.map { ($0, $0.tint(lastVisit: visits[$0.sessionId])) }
-        let blocked = tinted.filter { $0.1 == .urgent }.map(\.0)
-        let asking = tinted.filter { $0.1 == .waiting }.map(\.0)
-        let owed = tinted.filter { $0.1 == .owed }.map(\.0)
-
-        // Blocked counts here whether or not it has been opened: opening a permission request
-        // does not unblock it, so it never leaves the queue until it is answered.
-        let pressing = blocked + asking
+        let pressing = tinted.filter { $0.1 == .urgent || $0.1 == .waiting }.map(\.0)
         needsAttentionCount = pressing.count
         waitingCount = audible.count
-        attendedWaitingCount = owed.count
+        attendedWaitingCount = audible.count - pressing.count
         workingCount = records.filter { $0.state == .working }.count
         silencedWaitingCount = waiting.count - audible.count
         oldestWait = pressing.map { $0.elapsed(now: now) }.max()
@@ -95,15 +83,10 @@ public struct StatusSummary: Equatable, Sendable {
         // Paused drops out of the two attention colours but not down to grey: grey now claims
         // there is nothing running at all, and a paused machine full of sessions would be a
         // lie. Pausing stops the nagging; it does not make the work disappear.
-        if !config.paused, !blocked.isEmpty {
+        if !config.paused, pressing.contains(where: { $0.urgency == .urgent }) {
             tint = .urgent
-        } else if !config.paused, !asking.isEmpty {
+        } else if !config.paused, !pressing.isEmpty {
             tint = .waiting
-        } else if !owed.isEmpty {
-            // Opened and unanswered. Below the two attention colours because it has already
-            // been seen, above working because it is still waiting on the user. Survives pause,
-            // which silences nagging — and this one is not nagging, it is just remembering.
-            tint = .owed
         } else if !records.isEmpty {
             tint = .working
         } else {
@@ -118,9 +101,8 @@ public struct StatusSummary: Equatable, Sendable {
         if needsAttentionCount > 0, let oldestWait {
             return "\(needsAttentionCount) · \(Elapsed.short(oldestWait))"
         }
-        // Otherwise report the most pressing thing left, so the number always means whatever
-        // the colour is currently showing and never two things at once.
-        if owedCount > 0 { return "\(owedCount)" }
+        // Nothing wants you, so report what is running instead. The colour already says the
+        // machine is alive; this says how much of it is.
         return workingCount > 0 ? "\(workingCount)" : nil
     }
 

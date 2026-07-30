@@ -11,7 +11,6 @@ extension RowTint {
         switch self {
         case .urgent: return .systemRed
         case .waiting: return .systemOrange
-        case .owed: return .owedTeal
         case .working: return .royalPurple
         case .settled: return .tertiaryLabelColor
         }
@@ -28,10 +27,9 @@ extension RowTint {
 
     var meaning: String {
         switch self {
-        case .urgent: return "Blocked — needs your permission before it can go on"
-        case .waiting: return "Finished, and asking what's next — you haven't opened it"
-        case .owed: return "You opened it, but it's still waiting on your answer"
-        case .settled: return "Finished, and not asking for anything"
+        case .urgent: return "Needs your permission — you haven't opened it yet"
+        case .waiting: return "Finished its turn — you haven't opened it yet"
+        case .settled: return "You've opened it; still waiting on your reply"
         case .working: return "Claude is working; nothing is needed from you"
         }
     }
@@ -49,20 +47,6 @@ extension NSColor {
         appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
             ? NSColor(srgbRed: 0.663, green: 0.557, blue: 0.855, alpha: 1)   // #A98EDA
             : NSColor(srgbRed: 0.471, green: 0.318, blue: 0.663, alpha: 1)   // #7851A9
-    }
-
-    /// Teal, for a tab you opened and left unanswered.
-    ///
-    /// Teal rather than blue because blue sits too close to `royalPurple` to tell apart in a
-    /// 10pt dot, and those two states are adjacent in the list — "waiting on you" next to
-    /// "working, wants nothing" is exactly the pair that must never be confused.
-    ///
-    /// Saturated enough to serve the menu bar icon too, which purple was not: this hue holds
-    /// up in a thin stroke without needing a separate brighter variant.
-    static let owedTeal = NSColor(name: "owedTeal") { appearance in
-        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-            ? NSColor(srgbRed: 0.176, green: 0.831, blue: 0.749, alpha: 1) // #2DD4BF
-            : NSColor(srgbRed: 0.051, green: 0.580, blue: 0.533, alpha: 1) // #0D9488
     }
 
     /// Purple for the menu bar icon, deliberately more saturated than `royalPurple`.
@@ -102,8 +86,7 @@ extension NSColor {
     /// a dynamic colour reports the same name whichever appearance it was resolved under.
     var colorNameForDump: String {
         let named: [(String, NSColor)] = [
-            ("red", .systemRed), ("orange", .systemOrange), ("teal", .owedTeal),
-            ("purple", .royalPurple), ("menubar-purple", .menuBarPurple), ("gold", .deepGold),
+            ("red", .systemRed), ("orange", .systemOrange), ("purple", .royalPurple), ("menubar-purple", .menuBarPurple), ("gold", .deepGold),
             ("grey", .tertiaryLabelColor), ("grey", .secondaryLabelColor), ("label", .labelColor),
         ]
         for (name, candidate) in named where candidate == self { return name }
@@ -192,18 +175,16 @@ enum Legend {
         menu.delegate = highlighting
 
         menu.addItem(heading("The name, dot and time on each row"))
-        for tint in [RowTint.urgent, .waiting, .owed, .settled, .working] {
+        for tint in [RowTint.urgent, .waiting, .settled, .working] {
             menu.addItem(sample(tint.glyph, "4m", tint.meaning, color: tint.color))
         }
 
         menu.addItem(.separator())
         menu.addItem(heading("The menu bar icon"))
-        menu.addItem(sample(">_", "2 · 4m", "A tab is blocked on permission; 2 are waiting",
+        menu.addItem(sample(">_", "2 · 4m", "2 tabs need you; the oldest has waited 4m",
                             color: RowTint.urgent.color))
-        menu.addItem(sample(">_", "1 · 2m", "A tab is asking what's next",
+        menu.addItem(sample(">_", "1 · 2m", "A tab has finished and is waiting on you",
                             color: RowTint.waiting.color))
-        menu.addItem(sample(">_", "2", "2 tabs you opened still need an answer",
-                            color: RowTint.owed.color))
         menu.addItem(sample(">_", "3", "3 tabs are working; nothing wants you",
                             color: .menuBarPurple))
         menu.addItem(sample(">_", "", "No Claude sessions at all",
