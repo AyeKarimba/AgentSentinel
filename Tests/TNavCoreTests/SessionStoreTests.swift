@@ -53,6 +53,24 @@ final class SessionStoreTests: XCTestCase {
         XCTAssertNil(store.load("s1"))
     }
 
+    func testRemoveMissingOrUnsafeIdIsAQuietNoOp() throws {
+        let store = SessionStore(directory: directory)
+        try store.save(record())
+        store.remove("never-existed")
+        store.remove("../evil")
+        XCTAssertEqual(store.all().map(\.sessionId), ["s1"],
+                       "a bad id must not throw, and must not delete anything")
+    }
+
+    func testRemoveLeavesOtherRecordsAlone() throws {
+        let store = SessionStore(directory: directory)
+        try store.save(record(id: "s1"))
+        try store.save(record(id: "s2"))
+        store.remove("s1")
+        XCTAssertNil(store.load("s1"))
+        XCTAssertEqual(store.all().map(\.sessionId), ["s2"])
+    }
+
     func testIgnoresNonJSONAndCorruptFiles() throws {
         let store = SessionStore(directory: directory)
         try store.save(record())
