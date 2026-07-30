@@ -29,6 +29,7 @@ final class SessionRowView: NSView {
     private let onJump: (SessionRecord) -> Void
     private let onToggleMute: (SessionRecord) -> Void
     private let onToggleSnooze: (SessionRecord) -> Void
+    private let onForget: (SessionRecord) -> Void
 
     private let statusDot = NSTextField(labelWithString: "")
     private let unseenDot = NSTextField(labelWithString: "")
@@ -59,7 +60,8 @@ final class SessionRowView: NSView {
          now: Double,
          onJump: @escaping (SessionRecord) -> Void,
          onToggleMute: @escaping (SessionRecord) -> Void,
-         onToggleSnooze: @escaping (SessionRecord) -> Void) {
+         onToggleSnooze: @escaping (SessionRecord) -> Void,
+         onForget: @escaping (SessionRecord) -> Void) {
         self.record = record
         self.isMuted = isMuted
         self.snoozeRemaining = snoozeRemaining
@@ -69,6 +71,7 @@ final class SessionRowView: NSView {
         self.onJump = onJump
         self.onToggleMute = onToggleMute
         self.onToggleSnooze = onToggleSnooze
+        self.onForget = onForget
         super.init(frame: NSRect(x: 0, y: 0, width: Self.rowWidth, height: Self.rowHeight))
         build()
     }
@@ -282,6 +285,12 @@ final class SessionRowView: NSView {
     }
 
     override func mouseUp(with event: NSEvent) {
+        // ⌘ wins over everything on the row: over the snooze and mute icons, and over ⌥.
+        // Like the controls, it does not dismiss the menu — the row visibly vanishes instead.
+        if event.modifierFlags.contains(.command) {
+            onForget(record)
+            return
+        }
         let location = convert(event.locationInWindow, from: nil)
         // Controls first, and neither dismisses the menu.
         if hitRect(around: muteIcon).contains(location) {

@@ -178,6 +178,18 @@ final class SessionMonitor {
         apply(records)
     }
 
+    /// Drops a record from the menu.
+    ///
+    /// Safe by construction rather than by care: a session that is genuinely alive rewrites its
+    /// record on its next hook event, so forgetting one is at worst temporary. Only a record
+    /// with nothing behind it stays gone — which is precisely the one the user is trying to
+    /// remove, and the case that had no remedy at all before.
+    func forget(_ record: SessionRecord) {
+        EventLog.append("forget: \(record.project) (\(record.tty)) dismissed by hand")
+        store.remove(record.sessionId)
+        reload()
+    }
+
     func snooze(_ record: SessionRecord, seconds: Double) {
         let key = record.tabMuteKey
         let until = Date().timeIntervalSince1970 + seconds
