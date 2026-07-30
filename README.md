@@ -161,6 +161,41 @@ tnav spaces    # which tabs are on which desktop
 tnav resolve   # explain how this tab was identified (debugging)
 ```
 
+## Troubleshooting
+
+Open **Diagnostics…** from the menu first — it reports whether the hooks are registered and
+which focus backend is live, which covers most of these.
+
+| What you see | What it is |
+|---|---|
+| Nothing in the menu, ever | Hooks aren't registered. Diagnostics will say so; re-run `make install`. |
+| A session you're already running doesn't appear | Expected. Records are created by hook events, so send a message in that tab and it shows up. New sessions appear immediately. |
+| "Could not switch to that tab" | Automation permission for Terminal was denied. System Settings → Privacy & Security → Automation. |
+| Jumping brings the window to you instead of switching desktop | A macOS limitation, not a bug — see [above](#known-limitation-other-desktops). |
+| Cross-desktop jumps worked, then stopped | Accessibility permission is keyed to the binary's code signature, and `make install` rebuilds it. Re-grant under Privacy & Security → Accessibility. A `make run` build loses it on *every* rebuild. |
+| A row won't go away and can't be jumped to | A record that outlived its session. **⌘-click it to forget it.** |
+| No banners or sounds | Check **Settings…** (`⌘,`), and that the tab isn't muted or snoozed and notifications aren't paused. |
+| It alerts about a tab you're looking at | Shouldn't happen — a tab you've opened since it started waiting is suppressed. If it does, that's a bug worth reporting. |
+
+## What it touches
+
+Worth being explicit, because this reads what Claude says.
+
+**Reads** the hook payload Claude Code hands it: session id, working directory, event name,
+notification type, and the assistant's closing message. It never opens the transcript file, even
+though the payload includes its path.
+
+**Writes** to `~/.claude/tnav/` only — one JSON file per session, plus `config.json`,
+`visits.json`, `alerts.json` and `events.log`. Installing also adds five hook entries to
+`~/.claude/settings.json`, merging rather than replacing, with a backup alongside.
+
+**Sends nothing anywhere.** There is no networking code in the repo — no `URLSession`, no
+sockets. Verifiable in one grep.
+
+Claude's closing message is stored in the session file and shown in the row and the banner.
+If you'd rather it weren't, turn off **Show Claude's last message**; the rows fall back to a
+generic reason like "needs permission". `./scripts/uninstall.sh --purge` removes the state directory entirely.
+
 ## How it works
 
 Claude Code hooks fire on every session event. `tnav hook` resolves which terminal tab the
@@ -219,6 +254,20 @@ Set `TNAV_STATE_DIR` to point any binary at a scratch state directory.
   measured rather than assumed
 - [`docs/phase1-spaces-finding.md`](docs/phase1-spaces-finding.md) — the Spaces investigation,
   including a correction to its own earlier conclusion
+
+## Contributing
+
+Issues and pull requests welcome. Two things worth knowing before changing anything:
+
+- **`make check`** runs the unit tests plus a hook-to-menu integration test. `--dump-menu`
+  renders the menu as text, which is the only way to assert on it — an `NSStatusItem` menu
+  can't be opened from another process.
+- **`docs/`** records why things are the way they are, including a correction where the
+  project disproves its own earlier conclusion about Spaces. If you find one of those
+  conclusions wrong, that's the most useful kind of contribution.
+
+Every terminal-specific call sits behind `TabController`, so iTerm2 or Ghostty support is one
+new conformance.
 
 ## License
 

@@ -8,7 +8,22 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 AGENT="$HOME/Library/LaunchAgents/com.github.ayekarimba.terminalnavigator.plist"
 PURGE=0
-[ "${1:-}" = "--purge" ] && PURGE=1
+
+# Arguments are validated before anything is removed. Previously anything that was not exactly
+# `--purge` was ignored, so `--help` silently began a full uninstall — a script whose entire job
+# is deleting things has no business guessing at what it was asked to do.
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --purge)   PURGE=1; shift ;;
+        -h|--help)
+            echo "usage: uninstall.sh [--purge]"
+            echo
+            echo "  Removes the app, the login item and the Claude Code hooks."
+            echo "  --purge  also delete ~/.claude/tnav (settings and session state)"
+            exit 0 ;;
+        *) echo "unknown option: $1" >&2; echo "try --help" >&2; exit 2 ;;
+    esac
+done
 
 echo "==> Stopping"
 pkill -f "TerminalNavigator.app/Contents/MacOS/TerminalNavigator" 2>/dev/null || true
