@@ -145,6 +145,12 @@ Click any row to jump to that tab, or click a banner to go straight to the tab t
 The controls on each row snooze it for 10 minutes (⌥-click for 30) or mute that tab entirely.
 `⌥⌘J` jumps to the oldest tab waiting on you.
 
+**⌘-click a row to forget it.** Records normally clean themselves up — a session that ends
+fires a hook, and one whose process is gone gets pruned. The exception is a record that
+outlives its session while naming a pid that is still alive: it never prunes, and the tab it
+names belongs to someone else, so it can't be jumped to either. ⌘-click removes it. Forgetting
+a session that is genuinely alive is harmless — it reappears on its next event.
+
 There's also a CLI:
 
 ```sh
@@ -166,7 +172,7 @@ which focus backend is live, which covers most of these.
 | "Could not switch to that tab" | Automation permission for Terminal was denied. System Settings → Privacy & Security → Automation. |
 | Jumping brings the window to you instead of switching desktop | A macOS limitation, not a bug — see [above](#known-limitation-other-desktops). |
 | Cross-desktop jumps worked, then stopped | Accessibility permission is keyed to the binary's code signature, and `make install` rebuilds it. Re-grant under Privacy & Security → Accessibility. A `make run` build loses it on *every* rebuild. |
-| A row won't go away and can't be jumped to | A record that outlived its session. Delete its JSON file under `~/.claude/tnav/sessions/`. |
+| A row won't go away and can't be jumped to | A record that outlived its session. **⌘-click it to forget it.** |
 | No banners or sounds | Check **Settings…** (`⌘,`), and that the tab isn't muted or snoozed and notifications aren't paused. |
 
 ## What it touches
@@ -211,7 +217,7 @@ the hook, state and UI layers don't change.
 ## Development
 
 ```sh
-make test        # 131 unit tests
+make test        # 133 unit tests
 make check       # unit tests + the hook integration test
 make run         # run from source, without installing
 make app         # build the .app into ./build without installing
