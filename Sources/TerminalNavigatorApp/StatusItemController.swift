@@ -87,6 +87,25 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
     }
 
+    /// Takes out exactly the row the user just ⌘-clicked, immediately, rather than waiting on
+    /// the deferred rebuild `render` leaves pending while the menu is open (see its guard on
+    /// `isMenuOpen`). That deferral is right for a session that merely ended — nothing should
+    /// vanish out from under a hand still moving toward another row — but a row the user just
+    /// told us to forget must not linger, clickable, pointing at a tty that may now belong to
+    /// someone else. `buildMenu` separates the waiting and working groups with a separator only
+    /// when both are non-empty, and always adds one more after the rows; removing the last row
+    /// of a group can therefore leave two separators touching, so collapse them back to one.
+    private func spliceRow(withSessionId sessionId: String, from menu: NSMenu) {
+        guard let index = menu.items.firstIndex(where: {
+            ($0.view as? SessionRowView)?.record.sessionId == sessionId
+        }) else { return }
+        menu.removeItem(at: index)
+        if index > 0, index < menu.items.count,
+           menu.items[index - 1].isSeparatorItem, menu.items[index].isSeparatorItem {
+            menu.removeItem(at: index - 1)
+        }
+    }
+
     /// Pushes current values into rows already on screen. Rows whose session has since gone
     /// are left alone; the rebuild that removes them is already pending.
     private func refreshRows(in menu: NSMenu) {
@@ -366,7 +385,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             onJump: { [weak self] record in self?.jump(to: record) },
             onToggleMute: { [weak self] record in self?.toggleMute(record) },
             onToggleSnooze: { [weak self] record in self?.toggleSnooze(record) },
-            onForget: { [weak self] record in self?.monitor.forget(record) }
+            onForget: { [weak self] record in self?.forget(record) }
         )
         return item
     }
@@ -483,6 +502,17 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func toggleLastMessage() {
         monitor.mutate { $0.showLastMessage.toggle() }
+    }
+
+    /// The data-layer half lives on `SessionMonitor` — event log, file removal, reload. This
+    /// half is the display-layer consequence: `monitor.reload()` fires `onChange`, which calls
+    /// `render`, which (correctly) leaves an open menu's shape alone until it closes; without
+    /// this the forgotten row would still be sitting there, still clickable. So splice it out
+    /// of whichever menu is actually on screen right now.
+    private func forget(_ record: SessionRecord) {
+        monitor.forget(record)
+        guard isMenuOpen, let menu = statusItem.menu else { return }
+        spliceRow(withSessionId: record.sessionId, from: menu)
     }
 
     private func toggleMute(_ record: SessionRecord) {

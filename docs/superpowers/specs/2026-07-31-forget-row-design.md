@@ -46,9 +46,12 @@ to the current (reverted) code:
 
 ## Error handling
 
-A failed delete (permissions, file already gone) is logged and the reload happens
-anyway. The menu always shows whatever record files actually exist — the files are
-the source of truth, so no in-memory state can drift from them.
+The dismissal is logged unconditionally, before the delete is attempted — the log line
+records that the user asked to forget the row, not whether the file removal succeeded.
+A failed delete (permissions, file already gone) is tolerated silently: there is nothing
+useful to do about it, so nothing is surfaced, and the reload happens regardless. The
+menu always shows whatever record files actually exist — the files are the source of
+truth, so no in-memory state can drift from them.
 
 ## Testing
 

@@ -185,7 +185,7 @@ final class SessionMonitor {
     /// with nothing behind it stays gone — which is precisely the one the user is trying to
     /// remove, and the case that had no remedy at all before.
     func forget(_ record: SessionRecord) {
-        EventLog.append("forget: \(record.project) (\(record.tty)) dismissed by hand")
+        EventLog.append("forget: \(record.project) (\(record.tty), \(record.sessionId)) dismissed by hand")
         store.remove(record.sessionId)
         reload()
     }

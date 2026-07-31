@@ -286,7 +286,9 @@ final class SessionRowView: NSView {
 
     override func mouseUp(with event: NSEvent) {
         // ⌘ wins over everything on the row: over the snooze and mute icons, and over ⌥.
-        // Like the controls, it does not dismiss the menu — the row visibly vanishes instead.
+        // Like the controls, it does not dismiss the menu — the row visibly vanishes instead,
+        // spliced out of the open menu by `StatusItemController.forget(_:)` rather than left
+        // for the next rebuild, which while the menu is open could be arbitrarily far off.
         if event.modifierFlags.contains(.command) {
             onForget(record)
             return
