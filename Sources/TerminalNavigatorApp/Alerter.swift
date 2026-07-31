@@ -33,14 +33,14 @@ final class Alerter {
                   frontmostTTY: String?,
                   now: Double = Date().timeIntervalSince1970) {
         for record in records {
-            // The policy reasons about a record's own notified/escalated flags. Those belong to
-            // the hook, so hand it a copy carrying what this app has actually sent instead.
+            // The policy reasons about a record's own notified flag. That belongs to the
+            // hook, so hand it a copy carrying what this app has actually sent instead.
             var view = record
             view.notified = store.hasNotified(record)
-            view.escalated = store.hasEscalated(record)
 
             switch AlertPolicy.decide(record: view, config: config,
-                                      frontmostTTY: frontmostTTY, now: now) {
+                                      frontmostTTY: frontmostTTY,
+                                      escalationsSent: store.escalations(record), now: now) {
             case .notify(let urgency):
                 guard primed else {
                     store.adopt(record, escalateAfterSeconds: config.escalateAfterSeconds, now: now)

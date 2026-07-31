@@ -7,12 +7,13 @@ final class AlertPolicyTests: XCTestCase {
     private func record(state: SessionState = .waiting,
                         reason: WaitReason? = .turnComplete,
                         since: Double = 1000,
+                        reasonSince: Double? = nil,
                         notified: Bool = false,
                         escalated: Bool = false,
                         tty: String = "/dev/ttys003",
                         cwd: String = "/Users/you/proj") -> SessionRecord {
         SessionRecord(sessionId: "s1", tty: tty, pid: 100, cwd: cwd,
-                      state: state, reason: reason, since: since,
+                      state: state, reason: reason, since: since, reasonSince: reasonSince,
                       notified: notified, escalated: escalated)
     }
 
@@ -116,10 +117,42 @@ final class AlertPolicyTests: XCTestCase {
                        .escalate)
     }
 
-    func testDoesNotEscalateTwice() {
-        XCTAssertEqual(AlertPolicy.decide(record: record(reason: .permission, since: 1000, notified: true, escalated: true),
+    func testRemindersClimbTheLadder() {
+        // 5, 10 and 15 minutes with the default window — persistent without becoming an alarm.
+        let blocked = record(reason: .permission, since: 1000, notified: true)
+        let config = Config(escalateAfterSeconds: 300)
+        XCTAssertEqual(AlertPolicy.decide(record: blocked, config: config, frontmostTTY: nil,
+                                          escalationsSent: 1, now: 1500),
+                       .suppressAlreadyNotified, "second reminder is not due until 10 minutes")
+        XCTAssertEqual(AlertPolicy.decide(record: blocked, config: config, frontmostTTY: nil,
+                                          escalationsSent: 1, now: 1601),
+                       .escalate)
+        XCTAssertEqual(AlertPolicy.decide(record: blocked, config: config, frontmostTTY: nil,
+                                          escalationsSent: 2, now: 1901),
+                       .escalate, "third reminder at 15 minutes")
+        XCTAssertEqual(AlertPolicy.decide(record: blocked, config: config, frontmostTTY: nil,
+                                          escalationsSent: 3, now: 99_000),
+                       .suppressAlreadyNotified, "after the ladder it goes quiet for good")
+    }
+
+    func testReminderClockStartsAtTheRequestNotTheEarlierFinish() {
+        // A permission that arrived mid-wait gets its full five minutes; it must not inherit
+        // the age of the finished turn before it.
+        let blocked = record(reason: .permission, since: 1000, reasonSince: 1240, notified: true)
+        let config = Config(escalateAfterSeconds: 300)
+        XCTAssertEqual(AlertPolicy.decide(record: blocked, config: config, frontmostTTY: nil,
+                                          escalationsSent: 0, now: 1301),
+                       .suppressAlreadyNotified, "only 61s since the request itself")
+        XCTAssertEqual(AlertPolicy.decide(record: blocked, config: config, frontmostTTY: nil,
+                                          escalationsSent: 0, now: 1541),
+                       .escalate)
+    }
+
+    func testGoesQuietAfterTheLadder() {
+        XCTAssertEqual(AlertPolicy.decide(record: record(reason: .permission, since: 1000, notified: true),
                                           config: Config(escalateAfterSeconds: 300),
                                           frontmostTTY: nil,
+                                          escalationsSent: AlertPolicy.maxEscalations,
                                           now: 5000),
                        .suppressAlreadyNotified)
     }

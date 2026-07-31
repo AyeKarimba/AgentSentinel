@@ -38,9 +38,9 @@ final class AlertDeliveryTests: XCTestCase {
                         now: Double = 1000) -> AlertDecision {
         var view = record
         view.notified = store.hasNotified(record)
-        view.escalated = store.hasEscalated(record)
         return AlertPolicy.decide(record: view, config: config,
-                                  frontmostTTY: frontmostTTY, now: now)
+                                  frontmostTTY: frontmostTTY,
+                                  escalationsSent: store.escalations(record), now: now)
     }
 
     // MARK: - Firing once
@@ -73,15 +73,22 @@ final class AlertDeliveryTests: XCTestCase {
 
     // MARK: - Escalation
 
-    func testALongIgnoredRequestEscalatesExactlyOnce() {
+    func testABlockedRequestRemindsOnTheLadderThenGoesQuiet() {
         let target = record(since: 1000)
         store.markNotified(target)
         XCTAssertEqual(decide(target, now: 1200), .suppressAlreadyNotified,
-                       "not yet — the escalation threshold is 300s")
+                       "not yet — the first reminder is at 300s")
         XCTAssertEqual(decide(target, now: 1300), .escalate)
         store.markEscalated(target)
         XCTAssertEqual(decide(target, now: 1400), .suppressAlreadyNotified,
-                       "escalation is a single louder reminder, not a repeating alarm")
+                       "the second reminder is not due until 600s")
+        XCTAssertEqual(decide(target, now: 1601), .escalate)
+        store.markEscalated(target)
+        XCTAssertEqual(decide(target, now: 1901), .escalate,
+                       "the third and last reminder at 900s")
+        store.markEscalated(target)
+        XCTAssertEqual(decide(target, now: 99_000), .suppressAlreadyNotified,
+                       "three reminders, then quiet for good")
     }
 
     // MARK: - Reminders never banner

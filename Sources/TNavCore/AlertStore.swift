@@ -14,11 +14,15 @@ public final class AlertStore {
     public struct State: Codable, Equatable, Sendable {
         /// The `attentionSince` this alert was raised for.
         public var wait: Double
-        public var escalated: Bool
+        /// How many reminders this wait has already produced.
+        ///
+        /// Replaces the old `escalated` flag; an old alerts.json fails to decode wholesale,
+        /// which is safe — the un-primed first pass adopts every in-progress wait quietly.
+        public var escalations: Int
 
-        public init(wait: Double, escalated: Bool = false) {
+        public init(wait: Double, escalations: Int = 0) {
             self.wait = wait
-            self.escalated = escalated
+            self.escalations = escalations
         }
     }
 
@@ -46,10 +50,10 @@ public final class AlertStore {
         return state.wait == record.attentionSince
     }
 
-    /// Whether this exact wait has already produced its escalation.
-    public func hasEscalated(_ record: SessionRecord) -> Bool {
-        guard let state = all()[record.sessionId] else { return false }
-        return state.wait == record.attentionSince && state.escalated
+    /// How many reminders this exact wait has already produced; a different wait counts from zero.
+    public func escalations(_ record: SessionRecord) -> Int {
+        guard let state = all()[record.sessionId], state.wait == record.attentionSince else { return 0 }
+        return state.escalations
     }
 
     public func markNotified(_ record: SessionRecord) {
@@ -57,7 +61,12 @@ public final class AlertStore {
     }
 
     public func markEscalated(_ record: SessionRecord) {
-        mutate { $0[record.sessionId] = State(wait: record.attentionSince, escalated: true) }
+        mutate { states in
+            let sent = states[record.sessionId]?.wait == record.attentionSince
+                ? states[record.sessionId]?.escalations ?? 0
+                : 0
+            states[record.sessionId] = State(wait: record.attentionSince, escalations: sent + 1)
+        }
     }
 
     /// Records a wait that was already in progress before this app started as already handled.
@@ -69,7 +78,8 @@ public final class AlertStore {
     /// adopts the escalated state too, while a young wait keeps its escalation ahead of it.
     public func adopt(_ record: SessionRecord, escalateAfterSeconds: Double, now: Double) {
         if record.elapsed(now: now) >= escalateAfterSeconds {
-            markEscalated(record)
+            mutate { $0[record.sessionId] = State(wait: record.attentionSince,
+                                                  escalations: AlertPolicy.maxEscalations) }
         } else {
             markNotified(record)
         }

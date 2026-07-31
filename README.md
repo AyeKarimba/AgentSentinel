@@ -129,9 +129,9 @@ Permission requests always pulse deeper and faster than finished turns — the d
 *there's something for you* and *something is stuck* should be felt, not read.
 
 Each request alerts **once**, at the moment it happens — a banner is never delivered late. A
-permission request still unanswered after five minutes escalates a single time, at the urgent
-sound, and then goes quiet for good; finished turns never re-alert. Muting, snoozing and
-pausing all suppress alerts entirely.
+permission request that stays unanswered reminds you at the urgent sound on a short ladder —
+after 5, 10 and 15 minutes — and then goes quiet for good; finished turns never re-alert.
+Muting, snoozing and pausing all suppress alerts entirely.
 
 The banner is the app's own window rather than a system notification, and that's a deliberate
 trade. macOS fixes the size of a system notification and decides from your Focus settings

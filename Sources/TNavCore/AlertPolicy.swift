@@ -34,9 +34,15 @@ public enum AlertDecision: Equatable, Sendable {
 public enum AlertPolicy {
     /// - Parameter frontmostTTY: TTY of the tab the user is currently looking at, or nil when
     ///   the terminal app isn't frontmost.
+    /// Reminders a blocked session gets after its first alert before going quiet for good.
+    public static let maxEscalations = 3
+
+    /// - Parameter escalationsSent: how many reminders this wait has already produced,
+    ///   from `AlertStore.escalations(_:)`.
     public static func decide(record: SessionRecord,
                               config: Config,
                               frontmostTTY: String?,
+                              escalationsSent: Int = 0,
                               now: Double) -> AlertDecision {
         guard record.state == .waiting else { return .suppressNotWaiting }
         if config.isMuted(record) { return .suppressMuted }
@@ -56,11 +62,14 @@ public enum AlertPolicy {
 
         if !record.notified { return .notify(record.urgency) }
 
-        // Already pinged once. The only remaining reason to speak up is a *blocked* session
-        // that has sat long enough to deserve a single louder reminder — a finished turn
-        // said everything at the finish and never re-alerts.
-        if !record.escalated, record.urgency == .urgent,
-           record.elapsed(now: now) >= config.escalateAfterSeconds {
+        // Already pinged once. The only remaining reason to speak up is a *blocked* session —
+        // a finished turn said everything at the finish and never re-alerts. Blocked sessions
+        // remind on a ladder (5, 10 and 15 minutes with the default window) and then go quiet
+        // for good: persistent without becoming an alarm. The clock runs from `attentionSince`,
+        // so a permission that arrived mid-wait gets its full window rather than inheriting
+        // the age of the finish before it.
+        if record.urgency == .urgent, escalationsSent < Self.maxEscalations,
+           now - record.attentionSince >= config.escalateAfterSeconds * Double(escalationsSent + 1) {
             return .escalate
         }
         return .suppressAlreadyNotified
