@@ -128,9 +128,10 @@ bar icon. All of it is adjustable under **Settings…** (`⌘,`):
 Permission requests always pulse deeper and faster than finished turns — the difference between
 *there's something for you* and *something is stuck* should be felt, not read.
 
-Each request alerts **once**. If it's still unanswered after five minutes it escalates a single
-time, at the urgent sound, and then goes quiet for good. Muting, snoozing and pausing all
-suppress alerts entirely.
+Each request alerts **once**, at the moment it happens — a banner is never delivered late. A
+permission request still unanswered after five minutes escalates a single time, at the urgent
+sound, and then goes quiet for good; finished turns never re-alert. Muting, snoozing and
+pausing all suppress alerts entirely.
 
 The banner is the app's own window rather than a system notification, and that's a deliberate
 trade. macOS fixes the size of a system notification and decides from your Focus settings
@@ -190,7 +191,8 @@ though the payload includes its path.
 **Sends nothing anywhere.** There is no networking code in the repo — no `URLSession`, no
 sockets. Verifiable in one grep.
 
-Claude's closing message is stored in the session file and shown in the row and the banner.
+Claude's closing message is stored in the session file and shown in the menu row (the banner
+shows only the project name and what happened).
 If you'd rather it weren't, turn off **Show Claude's last message**; the rows fall back to a
 generic reason like "needs permission". `./scripts/uninstall.sh --purge` removes the state directory entirely.
 

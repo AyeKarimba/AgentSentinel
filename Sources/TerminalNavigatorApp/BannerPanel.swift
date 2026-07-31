@@ -21,12 +21,12 @@ final class BannerPanel {
         self.onClick = onClick
     }
 
-    func show(record: SessionRecord, tint: RowTint, settings: AlertSettings, message: String?) {
+    func show(record: SessionRecord, tint: RowTint, settings: AlertSettings) {
         dismiss()
         self.record = record
 
         let size = settings.bannerSize
-        let content = BannerView(record: record, tint: tint, message: message,
+        let content = BannerView(record: record, tint: tint,
                                  width: size.width,
                                  titleSize: size.titleSize, bodySize: size.bodySize) { [weak self] in
             guard let self, let record = self.record else { return }
@@ -94,7 +94,7 @@ final class BannerPanel {
 private final class BannerView: NSView {
     private let action: () -> Void
 
-    init(record: SessionRecord, tint: RowTint, message: String?,
+    init(record: SessionRecord, tint: RowTint,
          width: Double, titleSize: Double, bodySize: Double, action: @escaping () -> Void) {
         self.action = action
 
@@ -105,27 +105,19 @@ private final class BannerView: NSView {
         title.lineBreakMode = .byTruncatingTail
 
         // Carries the tint too: in a banner the reason is the point, not an aside, and it is
-        // what makes red-versus-amber legible without reading a word.
+        // what makes red-versus-amber legible without reading a word. Name and reason are the
+        // whole banner — Claude's closing message stays in the menu row, where the user reads
+        // at their own pace rather than against a dismiss timer.
         let reason = NSTextField(labelWithString: record.reason?.label ?? "waiting")
         reason.font = .systemFont(ofSize: bodySize - 1, weight: .medium)
         reason.textColor = accent
         reason.alphaValue = 0.8
 
-        // Claude's own words stay in plain label colour. This is the one part the user has to
-        // actually read, and the row makes the same call for the same reason — tinting it would
-        // turn the banner into a block of colour with nothing standing out.
-        let body = NSTextField(wrappingLabelWithString: message ?? "")
-        body.font = .systemFont(ofSize: bodySize)
-        body.textColor = .labelColor
-        body.maximumNumberOfLines = 3
-        body.isSelectable = false
-        body.preferredMaxLayoutWidth = width - 60
-
         let dot = NSTextField(labelWithString: tint.glyph)
         dot.font = .systemFont(ofSize: titleSize - 2)
         dot.textColor = accent
 
-        let text = NSStackView(views: message.map { _ in [title, reason, body] } ?? [title, reason])
+        let text = NSStackView(views: [title, reason])
         text.orientation = .vertical
         text.alignment = .leading
         text.spacing = 2

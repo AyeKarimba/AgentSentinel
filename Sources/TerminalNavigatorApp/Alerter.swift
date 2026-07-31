@@ -31,7 +31,6 @@ final class Alerter {
     func evaluate(records: [SessionRecord],
                   config: Config,
                   frontmostTTY: String?,
-                  showLastMessage: Bool,
                   now: Double = Date().timeIntervalSince1970) {
         for record in records {
             // The policy reasons about a record's own notified/escalated flags. Those belong to
@@ -48,13 +47,11 @@ final class Alerter {
                     break
                 }
                 store.markNotified(record)
-                deliver(record, urgent: urgency == .urgent, config: config,
-                        showLastMessage: showLastMessage, escalating: false)
+                deliver(record, urgent: urgency == .urgent, config: config, escalating: false)
             case .escalate:
                 store.markEscalated(record)
                 guard primed else { break }
-                deliver(record, urgent: true, config: config,
-                        showLastMessage: showLastMessage, escalating: true)
+                deliver(record, urgent: true, config: config, escalating: true)
             default:
                 break
             }
@@ -66,7 +63,6 @@ final class Alerter {
     private func deliver(_ record: SessionRecord,
                          urgent: Bool,
                          config: Config,
-                         showLastMessage: Bool,
                          escalating: Bool) {
         let settings = config.alerts
         EventLog.append("alert: \(escalating ? "escalate" : "notify") \(record.project) (\(record.tty))")
@@ -85,16 +81,10 @@ final class Alerter {
         }
 
         if settings.bannerEnabled {
-            let message = showLastMessage
-                ? record.lastAssistantMessage?
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                    .replacingOccurrences(of: "\n", with: " ")
-                : nil
             // Alerting means this is unread by definition, so the row's own tint is what the
             // banner should wear — an escalation forces urgent, matching its urgent sound.
             let tint: RowTint = urgent ? .urgent : record.tint(lastVisit: nil)
-            banner.show(record: record, tint: tint, settings: settings,
-                        message: (message?.isEmpty ?? true) ? nil : message)
+            banner.show(record: record, tint: tint, settings: settings)
         }
     }
 

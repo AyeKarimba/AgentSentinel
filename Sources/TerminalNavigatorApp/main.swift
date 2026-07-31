@@ -33,8 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // After the render, so a slow alert can never delay the menu updating.
             alerter.evaluate(records: monitor.records,
                              config: monitor.config,
-                             frontmostTTY: monitor.frontmostTTY,
-                             showLastMessage: monitor.config.showLastMessage)
+                             frontmostTTY: monitor.frontmostTTY)
         }
         monitor.start()
         controller.render()
