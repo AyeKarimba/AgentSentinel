@@ -46,8 +46,8 @@ The icon follows the same scale, so a glance at the menu bar is enough:
 ## Install
 
 ```sh
-git clone https://github.com/AyeKarimba/TerminalNavigator.git
-cd TerminalNavigator
+git clone https://github.com/AyeKarimba/ClaudeBar.git
+cd ClaudeBar
 make install
 ```
 
