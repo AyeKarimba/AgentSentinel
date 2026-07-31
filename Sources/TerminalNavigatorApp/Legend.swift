@@ -190,7 +190,7 @@ enum Legend {
                             color: RowTint.urgent.color))
         menu.addItem(sample(">_", "1 · 2m", "A tab has finished and is waiting on you",
                             color: RowTint.waiting.color))
-        menu.addItem(sample(">_", "", "Claude is running; nothing wants you",
+        menu.addItem(sample(">_", "3", "Claude is working in 3 tabs; nothing wants you",
                             color: RowTint.working.color))
         menu.addItem(sample(">_", "", "No Claude sessions at all",
                             color: .secondaryLabelColor))

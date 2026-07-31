@@ -41,6 +41,8 @@ public struct StatusSummary: Equatable, Sendable {
     /// Waiting sessions the user has already opened. They stay in the menu; they have just
     /// stopped asking for anything.
     public let attendedWaitingCount: Int
+    /// Sessions Claude is actively working in. Purple's version of the badge number.
+    public let workingCount: Int
     /// Blocking requests the user has not yet been present for, anywhere.
     public let unseenUrgentCount: Int
     /// The subset of those sitting in a silenced tab — the one thing the badge structurally
@@ -62,6 +64,7 @@ public struct StatusSummary: Equatable, Sendable {
 
         needsAttentionCount = unread.count
         waitingCount = audible.count
+        workingCount = records.filter { $0.state == .working }.count
         attendedWaitingCount = audible.count - unread.count
         silencedWaitingCount = waiting.count - audible.count
         oldestWait = unread.map { $0.elapsed(now: now) }.max()
@@ -91,8 +94,14 @@ public struct StatusSummary: Equatable, Sendable {
     /// how long the oldest of them has been. Nil once the queue empties, which is how the item
     /// renders as a bare dimmed glyph with no timestamp at all.
     public var badgeText: String? {
-        guard needsAttentionCount > 0, let oldestWait else { return nil }
-        return "\(needsAttentionCount) · \(Elapsed.short(oldestWait))"
+        if needsAttentionCount > 0, let oldestWait {
+            return "\(needsAttentionCount) · \(Elapsed.short(oldestWait))"
+        }
+        // Purple's badge: how many tabs Claude is working in. The attention queue always
+        // outranks it, attended waiting rows are already dealt with so they add nothing,
+        // and zero working tabs shows a bare glyph rather than a "0".
+        if tint == .working, workingCount > 0 { return "\(workingCount)" }
+        return nil
     }
 
     /// Whether to draw the dot beside the glyph.

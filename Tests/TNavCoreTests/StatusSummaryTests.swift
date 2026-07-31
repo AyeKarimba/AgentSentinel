@@ -22,11 +22,53 @@ final class StatusSummaryTests: XCTestCase {
         XCTAssertEqual(summary.accessibilityDescription, "No Claude sessions need you")
     }
 
-    func testWorkingSessionsAreNotCounted() {
+    func testWorkingSessionsAreNotCountedAsWaiting() {
         let records = [record(id: "a", state: .working, reason: nil, since: 900)]
         let summary = StatusSummary(records: records, config: Config(), now: 1000)
         XCTAssertEqual(summary.waitingCount, 0)
+        XCTAssertEqual(summary.badgeText, "1", "not waiting on anyone — but it is working")
+    }
+
+    // MARK: - Working count
+
+    func testOnlyWorkingSessionsBadgeTheirCount() {
+        let records = [
+            record(id: "a", state: .working, reason: nil, since: 900, tty: "/dev/ttys001"),
+            record(id: "b", state: .working, reason: nil, since: 950, tty: "/dev/ttys002"),
+        ]
+        let summary = StatusSummary(records: records, config: Config(), now: 1000)
+        XCTAssertEqual(summary.tint, .working)
+        XCTAssertEqual(summary.badgeText, "2", "purple reports how many tabs are working")
+    }
+
+    func testAttentionQueueAlwaysOutranksTheWorkingCount() {
+        let records = [
+            record(id: "a", state: .working, reason: nil, since: 900, tty: "/dev/ttys001"),
+            record(id: "b", since: 760, tty: "/dev/ttys002"),
+        ]
+        let summary = StatusSummary(records: records, config: Config(), now: 1000)
+        XCTAssertEqual(summary.badgeText, "1 · 4m",
+                       "a tab asking for the user beats a headcount of busy ones")
+    }
+
+    func testOnlyAttendedWaitingShowsNoCount() {
+        // A grey row keeps the icon purple, but nothing is actually working — a "0" would lie.
+        let records = [record(id: "a", since: 900)]
+        let summary = StatusSummary(records: records, config: Config(),
+                                    visits: ["a": 999], now: 1000)
+        XCTAssertEqual(summary.tint, .working)
         XCTAssertNil(summary.badgeText)
+    }
+
+    func testWorkingCountIgnoresAttendedWaitingRows() {
+        let records = [
+            record(id: "a", state: .working, reason: nil, since: 900, tty: "/dev/ttys001"),
+            record(id: "b", since: 950, tty: "/dev/ttys002"),
+        ]
+        let summary = StatusSummary(records: records, config: Config(),
+                                    visits: ["b": 999], now: 1000)
+        XCTAssertEqual(summary.badgeText, "1",
+                       "grey rows are already dealt with; only working tabs count")
     }
 
     func testBadgeShowsCountAndLongestWait() {
