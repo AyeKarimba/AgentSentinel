@@ -108,7 +108,8 @@ final class AlertPolicyTests: XCTestCase {
     }
 
     func testEscalatesOnceAfterTheWindow() {
-        XCTAssertEqual(AlertPolicy.decide(record: record(since: 1000, notified: true),
+        // Escalation is reserved for blocked sessions; a finished turn never re-alerts.
+        XCTAssertEqual(AlertPolicy.decide(record: record(reason: .permission, since: 1000, notified: true),
                                           config: Config(escalateAfterSeconds: 300),
                                           frontmostTTY: nil,
                                           now: 1301),
@@ -116,7 +117,7 @@ final class AlertPolicyTests: XCTestCase {
     }
 
     func testDoesNotEscalateTwice() {
-        XCTAssertEqual(AlertPolicy.decide(record: record(since: 1000, notified: true, escalated: true),
+        XCTAssertEqual(AlertPolicy.decide(record: record(reason: .permission, since: 1000, notified: true, escalated: true),
                                           config: Config(escalateAfterSeconds: 300),
                                           frontmostTTY: nil,
                                           now: 5000),

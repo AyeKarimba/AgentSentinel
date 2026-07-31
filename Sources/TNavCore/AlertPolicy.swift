@@ -12,6 +12,10 @@ public enum AlertDecision: Equatable, Sendable {
     /// You are already looking at this tab, so there is nothing to route you to.
     case suppressAlreadyFocused
     case suppressAlreadyNotified
+    /// idle_prompt — Claude Code's own echo of a turn that already ended. A banner happens
+    /// at the finish or not at all; delivering it on the echo's schedule is how a banner
+    /// arrives a minute after the user has already read the tab.
+    case suppressReminder
 
     public var shouldAlert: Bool {
         switch self {
@@ -43,13 +47,20 @@ public enum AlertPolicy {
         // badge still tells you they are there, they just stop interrupting.
         if config.blockingOnly, record.reason != .permission { return .suppressNonBlocking }
 
+        // A banner happens at the finish or not at all. idle_prompt is Claude Code's own
+        // ~60-second echo of a turn that already ended; letting it deliver a suppressed or
+        // missed alert is how a banner arrives a minute after the user read the tab.
+        if record.reason == .idlePrompt { return .suppressReminder }
+
         if let frontmostTTY, frontmostTTY == record.tty { return .suppressAlreadyFocused }
 
         if !record.notified { return .notify(record.urgency) }
 
-        // Already pinged once. The only remaining reason to speak up is a wait that has run
-        // long enough to deserve a single louder reminder.
-        if !record.escalated, record.elapsed(now: now) >= config.escalateAfterSeconds {
+        // Already pinged once. The only remaining reason to speak up is a *blocked* session
+        // that has sat long enough to deserve a single louder reminder — a finished turn
+        // said everything at the finish and never re-alerts.
+        if !record.escalated, record.urgency == .urgent,
+           record.elapsed(now: now) >= config.escalateAfterSeconds {
             return .escalate
         }
         return .suppressAlreadyNotified

@@ -51,6 +51,7 @@ enum ListCommand {
         case .suppressNonBlocking: return "not blocking"
         case .suppressAlreadyFocused: return "you're here"
         case .suppressAlreadyNotified: return "already alerted"
+        case .suppressReminder: return nil  // routine idle echo, nothing the user need act on
         }
     }
 }

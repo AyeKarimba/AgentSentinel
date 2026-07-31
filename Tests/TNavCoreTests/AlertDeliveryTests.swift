@@ -84,6 +84,30 @@ final class AlertDeliveryTests: XCTestCase {
                        "escalation is a single louder reminder, not a repeating alarm")
     }
 
+    // MARK: - Reminders never banner
+
+    func testAnIdleReminderNeverAlertsEvenIfTheFinishWasSuppressed() {
+        // The Stop's banner can be suppressed while the user is reading that very tab. The
+        // idle_prompt echo a minute later must not deliver it late — a banner about a tab
+        // the user already read is noise, not news.
+        let reminder = record(reason: .idlePrompt, since: 1000)
+        XCTAssertEqual(decide(reminder), .suppressReminder)
+    }
+
+    func testAnIdleReminderDoesNotEscalateLateEither() {
+        let reminder = record(reason: .idlePrompt, since: 1000)
+        store.markNotified(reminder)
+        XCTAssertEqual(decide(reminder, now: 1400), .suppressReminder)
+    }
+
+    func testAFinishedTurnNeverEscalates() {
+        // Escalation is for blocked sessions. A finished turn said everything at the finish;
+        // a louder reminder five minutes later is exactly the late banner being removed.
+        let finished = record(reason: .turnComplete, since: 1000)
+        store.markNotified(finished)
+        XCTAssertEqual(decide(finished, now: 1400), .suppressAlreadyNotified)
+    }
+
     // MARK: - Silence still wins
 
     func testAnythingTheUserSilencedNeverAlerts() {
