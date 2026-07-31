@@ -66,7 +66,7 @@ make uninstall
   not cosmetic: macOS ties Accessibility and Automation permission to a bundle identity, and a
   bare binary run out of `.build` gets a new identity on every rebuild — so permissions
   silently lapse.
-- Adds five hooks to `~/.claude/settings.json`, pointing at the `tnav` inside the bundle.
+- Adds six hooks to `~/.claude/settings.json`, pointing at the `tnav` inside the bundle.
   It **merges**: any hooks you already have, including other tools' hooks on the same events,
   are left alone. A backup is written to `settings.json.tnav-backup`, and re-running replaces
   its own entries rather than duplicating them.
@@ -184,7 +184,7 @@ notification type, and the assistant's closing message. It never opens the trans
 though the payload includes its path.
 
 **Writes** to `~/.claude/tnav/` only — one JSON file per session, plus `config.json`,
-`visits.json`, `alerts.json` and `events.log`. Installing also adds five hook entries to
+`visits.json`, `alerts.json` and `events.log`. Installing also adds six hook entries to
 `~/.claude/settings.json`, merging rather than replacing, with a backup alongside.
 
 **Sends nothing anywhere.** There is no networking code in the repo — no `URLSession`, no
@@ -217,7 +217,7 @@ the hook, state and UI layers don't change.
 ## Development
 
 ```sh
-make test        # 133 unit tests
+make test        # 136 unit tests
 make check       # unit tests + the hook integration test
 make run         # run from source, without installing
 make app         # build the .app into ./build without installing

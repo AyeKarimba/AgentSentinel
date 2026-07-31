@@ -71,9 +71,11 @@ final class HookProcessorTests: XCTestCase {
 
     // MARK: - Reason mapping
 
-    func testIdlePromptMapsToIdleReasonAndIsUrgent() {
+    func testIdlePromptMapsToIdleReasonAndIsNotUrgent() {
+        // Claude Code emits idle_prompt about a minute after every turn ends. Urgent would
+        // turn every finished tab red once that timer fired; it is a reminder, not a block.
         XCTAssertEqual(HookProcessor.waitReason(forNotificationType: "idle_prompt"), .idlePrompt)
-        XCTAssertEqual(WaitReason.idlePrompt.urgency, .urgent)
+        XCTAssertEqual(WaitReason.idlePrompt.urgency, .normal)
     }
 
     func testUnknownNotificationTypeIsTreatedAsUrgentNotIgnored() {
@@ -126,11 +128,11 @@ final class HookProcessorTests: XCTestCase {
     }
 
     func testUnknownEventIsIgnored() throws {
-        let outcome = HookProcessor.apply(payload: try payload("PreToolUse"),
+        let outcome = HookProcessor.apply(payload: try payload("SubagentStop"),
                                          identity: identity,
                                          existing: nil,
                                          now: 1000)
-        XCTAssertEqual(outcome, .ignoredUnknownEvent("PreToolUse"))
+        XCTAssertEqual(outcome, .ignoredUnknownEvent("SubagentStop"))
     }
 
     // MARK: - `since` preservation and notification re-arming
@@ -146,8 +148,9 @@ final class HookProcessorTests: XCTestCase {
         XCTAssertTrue(record.notified, "same urgency should not re-notify")
     }
 
-    func testUrgencyClimbFromTurnCompleteToIdleReArmsNotification() throws {
+    func testIdlePromptAfterTurnCompleteDoesNotReArmTheAlert() throws {
         // Real sequence: Stop fires, then 60s later Claude Code emits the idle notification.
+        // Both mean the same thing — the turn is over — so one alert covers them both.
         let existing = waiting(reason: .turnComplete, since: 500, notified: true, escalated: true)
         let outcome = HookProcessor.apply(payload: try payload("Notification", notificationType: "idle_prompt"),
                                          identity: identity,
@@ -155,12 +158,26 @@ final class HookProcessorTests: XCTestCase {
                                          now: 560)
         guard case .updated(let record) = outcome else { return XCTFail("expected update") }
         XCTAssertEqual(record.reason, .idlePrompt)
-        XCTAssertEqual(record.since, 500, "wait started at the Stop, not the escalation")
+        XCTAssertEqual(record.since, 500, "wait started at the Stop, not the reminder")
+        XCTAssertTrue(record.notified, "the finish already pinged once; the idle timer is not news")
+        XCTAssertTrue(record.escalated)
+    }
+
+    func testPermissionAfterTurnCompleteStillReArmsTheAlert() throws {
+        // A permission request genuinely blocks the session — that is new information even
+        // if the tab already pinged for the finished turn.
+        let existing = waiting(reason: .turnComplete, since: 500, notified: true, escalated: true)
+        let outcome = HookProcessor.apply(payload: try payload("Notification", notificationType: "permission_prompt"),
+                                         identity: identity,
+                                         existing: existing,
+                                         now: 560)
+        guard case .updated(let record) = outcome else { return XCTFail("expected update") }
+        XCTAssertEqual(record.reason, .permission)
         XCTAssertFalse(record.notified, "climbing to urgent should ping again")
         XCTAssertFalse(record.escalated)
     }
 
-    func testUrgentToUrgentDoesNotReArm() throws {
+    func testRepeatedIdlePromptDoesNotReArm() throws {
         let existing = waiting(reason: .idlePrompt, since: 500, notified: true)
         let outcome = HookProcessor.apply(payload: try payload("Notification", notificationType: "idle_prompt"),
                                          identity: identity,
@@ -180,6 +197,35 @@ final class HookProcessorTests: XCTestCase {
                                          now: 1000)
         guard case .updated(let record) = outcome else { return XCTFail("expected update") }
         XCTAssertEqual(record.since, 1000)
+    }
+
+    // MARK: - Tool activity
+
+    func testPreToolUseMarksAWaitingSessionWorking() throws {
+        // Answering a permission prompt fires no hook of its own, but the approved tool
+        // starts executing immediately — and that is observable.
+        let existing = waiting(reason: .permission, since: 500, notified: true, escalated: true)
+        let outcome = HookProcessor.apply(payload: try payload("PreToolUse"),
+                                         identity: identity,
+                                         existing: existing,
+                                         now: 1000)
+        guard case .updated(let record) = outcome else { return XCTFail("expected update") }
+        XCTAssertEqual(record.state, .working)
+        XCTAssertNil(record.reason)
+        XCTAssertEqual(record.since, 1000, "the approval starts a fresh work period")
+        XCTAssertFalse(record.notified)
+    }
+
+    func testPreToolUseWhileAlreadyWorkingPreservesTheWorkStart() throws {
+        let working = SessionRecord(sessionId: "9cf7abf1-94cb-4db1-912a-38247f0898b6",
+                                   tty: "/dev/ttys003", pid: 17544,
+                                   cwd: "/tmp/x", state: .working, since: 500)
+        let outcome = HookProcessor.apply(payload: try payload("PreToolUse"),
+                                         identity: identity,
+                                         existing: working,
+                                         now: 1000)
+        guard case .updated(let record) = outcome else { return XCTFail("expected update") }
+        XCTAssertEqual(record.since, 500, "every tool call fires this; the clock must not restart per tool")
     }
 
     func testStopPreservesEarlierMessageWhenPayloadOmitsIt() throws {

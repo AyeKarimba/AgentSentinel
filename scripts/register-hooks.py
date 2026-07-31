@@ -16,7 +16,7 @@ import os
 import shutil
 import sys
 
-EVENTS = ["SessionStart", "UserPromptSubmit", "Notification", "Stop", "SessionEnd"]
+EVENTS = ["SessionStart", "UserPromptSubmit", "PreToolUse", "Notification", "Stop", "SessionEnd"]
 SETTINGS = os.path.expanduser("~/.claude/settings.json")
 
 

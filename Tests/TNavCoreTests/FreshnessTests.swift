@@ -48,11 +48,12 @@ final class FreshnessTests: XCTestCase {
 
     func testUnreadBlockingRequestReadsUrgent() {
         XCTAssertEqual(record(reason: .permission).tint(lastVisit: nil), .urgent)
-        XCTAssertEqual(record(reason: .idlePrompt).tint(lastVisit: nil), .urgent)
     }
 
     func testUnreadTurnCompletionReadsWaiting() {
         XCTAssertEqual(record(reason: .turnComplete).tint(lastVisit: nil), .waiting)
+        XCTAssertEqual(record(reason: .idlePrompt).tint(lastVisit: nil), .waiting,
+                       "the idle reminder is the same news as the finish, not an escalation")
     }
 
     func testOpeningTheTabSettlesTheRow() {

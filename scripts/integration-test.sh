@@ -64,17 +64,23 @@ check "message captured inline" '.lastAssistantMessage' 'Which approach do you w
 FIRST_SINCE=$(jq -r '.since' "$STATE")
 
 echo
-echo "Notification(idle_prompt) → urgency climbs, original wait start preserved"
+echo "Notification(idle_prompt) → same news as the finish, wait start preserved"
 emit Notification ',"message":"Claude is waiting for your input","notification_type":"idle_prompt"'
-check "reason upgraded"         '.reason'   'idle_prompt'
+check "reason updated"          '.reason'   'idle_prompt'
 check "wait start preserved"    '.since'    "$FIRST_SINCE"
-check "re-armed for urgent ping" '.notified' 'false'
+check "alert not re-armed"      '.notified' 'false'
 
 echo
 echo "Notification(unknown type) → treated as permission, not dropped"
 emit Notification ',"message":"Claude needs your permission","notification_type":"tool_permission_v9"'
 check "unknown type is urgent"  '.reason'   'permission'
 check "wait start still preserved" '.since' "$FIRST_SINCE"
+
+echo
+echo "PreToolUse → permission answered, tool running, session working again"
+emit PreToolUse ',"tool_name":"Bash"'
+check "back to working"         '.state'    'working'
+check "reason cleared"          '.reason'   'null'
 
 echo
 echo "UserPromptSubmit → user answered, alert cleared"
@@ -90,7 +96,7 @@ check_absent "record deleted"
 
 echo
 echo "Unknown event → ignored, no record resurrected"
-emit PreToolUse ',"tool_name":"Bash"'
+emit SubagentStop ',"tool_name":"Bash"'
 check_absent "unhandled event ignored"
 
 echo

@@ -15,8 +15,13 @@ public enum WaitReason: String, Codable, Sendable {
     /// notification types Claude Code may add later — unknown means urgent, not ignored.
     case permission = "permission"
 
+    /// Only a permission request is urgent. Claude Code emits `idle_prompt` about a minute
+    /// after every turn ends, so treating it as urgent turned every finished tab red and
+    /// fired a second, louder alert for a turn the user had already been pinged about.
+    /// Unknown notification types decode as `permission`, so they stay urgent rather than
+    /// silently soft.
     public var urgency: Urgency {
-        self == .turnComplete ? .normal : .urgent
+        self == .permission ? .urgent : .normal
     }
 
     public var label: String {

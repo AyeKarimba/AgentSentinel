@@ -21,6 +21,7 @@ public struct HookPayload: Decodable, Sendable {
 public enum HookEventKind: String, Sendable {
     case sessionStart = "SessionStart"
     case userPromptSubmit = "UserPromptSubmit"
+    case preToolUse = "PreToolUse"
     case stop = "Stop"
     case notification = "Notification"
     case sessionEnd = "SessionEnd"
@@ -66,6 +67,24 @@ public enum HookProcessor {
                                           state: .working,
                                           reason: nil,
                                           since: now,
+                                          notified: false,
+                                          escalated: false,
+                                          lastAssistantMessage: nil))
+
+        case .preToolUse:
+            // The only signal that exists for "the user answered the permission prompt":
+            // approving one fires no hook of its own, but the approved tool starts executing
+            // immediately, and that is observable. It also fires on every tool call mid-turn,
+            // so an already-working session keeps its original work start — the clock must
+            // not restart per tool.
+            let since = existing?.state == .working ? (existing?.since ?? now) : now
+            return .updated(SessionRecord(sessionId: payload.sessionId,
+                                          tty: identity.tty,
+                                          pid: identity.sessionPid,
+                                          cwd: payload.cwd,
+                                          state: .working,
+                                          reason: nil,
+                                          since: since,
                                           notified: false,
                                           escalated: false,
                                           lastAssistantMessage: nil))
