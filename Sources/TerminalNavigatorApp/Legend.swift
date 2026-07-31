@@ -203,7 +203,7 @@ enum Legend {
         menu.addItem(symbol("bell.fill", "Mute this tab until you turn it back on"))
 
         menu.addItem(.separator())
-        menu.addItem(heading("Clicking a row jumps to that tab, which marks it opened"))
+        menu.addItem(heading("Clicking a row jumps to that tab; it marks as opened once you land there"))
         menu.addItem(heading("⌘-click a row to forget it, if it outlived its session"))
 
         return menu

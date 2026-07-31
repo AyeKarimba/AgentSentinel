@@ -467,11 +467,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         do {
             if try controller.focus(tty: record.tty) == .notFound {
                 EventLog.append("menu: no tab owns \(record.tty)")
-                return
             }
-            // Arriving via the menu counts as having looked at it, so clear the unseen dot
-            // now rather than waiting for the next frontmost poll.
-            monitor.noteVisit(sessionId: record.sessionId)
+            // Deliberately not marked as visited here. A focus call can "succeed" without the
+            // user actually arriving — AppleScript selects a tab on another desktop without
+            // taking anyone there — and an optimistic mark greyed rows the user never saw.
+            // The frontmost poll records the visit once they genuinely land.
         } catch {
             presentError(error)
         }

@@ -170,14 +170,6 @@ final class SessionMonitor {
         return changed
     }
 
-    /// Called when this app moves the user to a tab, so the visit registers immediately rather
-    /// than waiting for the next poll — including the re-sort, since the row has just changed
-    /// colour and therefore its place in the order.
-    func noteVisit(sessionId: String) {
-        visitStore.markVisited(sessionId: sessionId)
-        apply(records)
-    }
-
     /// Drops a record from the menu.
     ///
     /// Safe by construction rather than by care: a session that is genuinely alive rewrites its
