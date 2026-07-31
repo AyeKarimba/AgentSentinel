@@ -48,7 +48,7 @@ enum Diagnostics {
 
     static func present(monitor: SessionMonitor) {
         let alert = NSAlert()
-        alert.messageText = "TerminalNavigator diagnostics"
+        alert.messageText = "ClaudeBar diagnostics"
         alert.informativeText = report(monitor: monitor)
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")

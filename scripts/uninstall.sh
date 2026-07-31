@@ -1,12 +1,14 @@
 #!/bin/bash
-# Remove TerminalNavigator: the app, the login item, and its Claude Code hooks.
+# Remove ClaudeBar: the app, the login item, and its Claude Code hooks.
 #
 # Leaves ~/.claude/tnav alone by default — it is small, and keeping it means a reinstall
 # remembers your mutes and snoozes. Pass --purge to delete that too.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-AGENT="$HOME/Library/LaunchAgents/com.github.ayekarimba.terminalnavigator.plist"
+AGENT="$HOME/Library/LaunchAgents/com.github.ayekarimba.claudebar.plist"
+# The pre-rename login item, cleaned up too if a migration left it behind.
+OLD_AGENT="$HOME/Library/LaunchAgents/com.github.ayekarimba.terminalnavigator.plist"
 PURGE=0
 
 # Arguments are validated before anything is removed. Previously anything that was not exactly
@@ -26,22 +28,27 @@ while [ $# -gt 0 ]; do
 done
 
 echo "==> Stopping"
+pkill -f "ClaudeBar.app/Contents/MacOS/ClaudeBar" 2>/dev/null || true
 pkill -f "TerminalNavigator.app/Contents/MacOS/TerminalNavigator" 2>/dev/null || true
 
-if [ -f "$AGENT" ]; then
-    echo "==> Removing login item"
-    launchctl unload "$AGENT" 2>/dev/null || true
-    rm -f "$AGENT"
-fi
+for agent in "$AGENT" "$OLD_AGENT"; do
+    if [ -f "$agent" ]; then
+        echo "==> Removing login item"
+        launchctl unload "$agent" 2>/dev/null || true
+        rm -f "$agent"
+    fi
+done
 
 echo "==> Removing Claude Code hooks"
 python3 "$ROOT/scripts/register-hooks.py" --remove | sed 's/^/    /'
 
 for prefix in /Applications "$HOME/Applications"; do
-    if [ -d "$prefix/TerminalNavigator.app" ]; then
-        echo "==> Removing $prefix/TerminalNavigator.app"
-        rm -rf "$prefix/TerminalNavigator.app"
-    fi
+    for app in ClaudeBar.app TerminalNavigator.app; do
+        if [ -e "$prefix/$app" ]; then
+            echo "==> Removing $prefix/$app"
+            rm -rf "$prefix/$app"
+        fi
+    done
 done
 
 if [ "$PURGE" = "1" ]; then
@@ -52,6 +59,6 @@ else
 fi
 
 echo
-echo "Done. Nothing of TerminalNavigator is left running."
+echo "Done. Nothing of ClaudeBar is left running."
 echo "You may also want to drop it from System Settings → Privacy & Security →"
 echo "Accessibility and Automation."

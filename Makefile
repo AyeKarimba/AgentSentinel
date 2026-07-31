@@ -1,11 +1,11 @@
 .PHONY: install uninstall app build test check run clean help
 
 help:
-	@echo "TerminalNavigator"
+	@echo "ClaudeBar"
 	@echo
 	@echo "  make install     build, install to /Applications, register hooks, start at login"
 	@echo "  make uninstall   remove the app, the login item and the hooks"
-	@echo "  make app         build TerminalNavigator.app into ./build, without installing"
+	@echo "  make app         build ClaudeBar.app into ./build, without installing"
 	@echo "  make test        unit tests"
 	@echo "  make check       unit tests + the hook integration test"
 	@echo "  make run         run from source, without installing (development)"
@@ -39,8 +39,8 @@ check: test
 # jumps quietly stop working — `make install` is the one that behaves consistently.
 run:
 	swift build
-	@pkill -f "\.build/.*/TerminalNavigatorApp" 2>/dev/null || true
-	@./.build/debug/TerminalNavigatorApp &
+	@pkill -f "\.build/.*/ClaudeBarApp" 2>/dev/null || true
+	@./.build/debug/ClaudeBarApp &
 	@echo "running from .build — see the menu bar"
 
 clean:

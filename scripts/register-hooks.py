@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Register (or remove) TerminalNavigator's hooks in ~/.claude/settings.json.
+"""Register (or remove) ClaudeBar's hooks in ~/.claude/settings.json.
 
 The file belongs to the user, not to us: it may already hold hooks for other tools, on these
 very same events. So this merges rather than writes — it only ever removes entries it can
 identify as its own, leaves everything else untouched, and takes a backup first.
 
-Re-running is safe. Existing TerminalNavigator entries are replaced, not duplicated, so an
+Re-running is safe. Existing ClaudeBar entries are replaced, not duplicated, so an
 upgrade that moves the binary does the right thing.
 
     register-hooks.py /path/to/tnav      # install or update
@@ -23,7 +23,7 @@ SETTINGS = os.path.expanduser("~/.claude/settings.json")
 def is_ours(command):
     """Whether a hook command is one of ours, wherever the binary happens to live."""
     text = str(command).strip()
-    return text.endswith("tnav hook") or "TerminalNavigator.app" in text
+    return text.endswith("tnav hook") or "ClaudeBar.app" in text or "TerminalNavigator.app" in text
 
 
 def strip_ours(hooks):
@@ -103,7 +103,7 @@ def main():
     other = sum(len(g.get("hooks", [])) for groups in hooks.values()
                 for g in groups if isinstance(g, dict)) - (0 if remove else len(EVENTS))
     if remove:
-        print(f"removed TerminalNavigator hooks from {SETTINGS}")
+        print(f"removed ClaudeBar hooks from {SETTINGS}")
     else:
         print(f"registered {len(EVENTS)} hooks in {SETTINGS}")
     if other > 0:

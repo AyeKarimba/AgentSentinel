@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds TerminalNavigator.app.
+# Builds ClaudeBar.app.
 #
 # SwiftPM produces bare executables, not bundles, so the .app is assembled here. It matters
 # for more than tidiness: macOS grants Accessibility and Automation permission to a bundle
@@ -11,7 +11,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APP="${1:-$ROOT/build/TerminalNavigator.app}"
+APP="${1:-$ROOT/build/ClaudeBar.app}"
 VERSION="1.0.0"
 
 echo "==> Building release binaries"
@@ -22,7 +22,7 @@ echo "==> Assembling $(basename "$APP")"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
-cp "$BIN/TerminalNavigatorApp" "$APP/Contents/MacOS/TerminalNavigator"
+cp "$BIN/ClaudeBarApp" "$APP/Contents/MacOS/ClaudeBar"
 cp "$BIN/tnav"                 "$APP/Contents/MacOS/tnav"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
@@ -30,10 +30,10 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleName</key>              <string>TerminalNavigator</string>
-    <key>CFBundleDisplayName</key>       <string>TerminalNavigator</string>
-    <key>CFBundleExecutable</key>        <string>TerminalNavigator</string>
-    <key>CFBundleIdentifier</key>        <string>com.github.ayekarimba.terminalnavigator</string>
+    <key>CFBundleName</key>              <string>ClaudeBar</string>
+    <key>CFBundleDisplayName</key>       <string>ClaudeBar</string>
+    <key>CFBundleExecutable</key>        <string>ClaudeBar</string>
+    <key>CFBundleIdentifier</key>        <string>com.github.ayekarimba.claudebar</string>
     <key>CFBundleVersion</key>           <string>$VERSION</string>
     <key>CFBundleShortVersionString</key><string>$VERSION</string>
     <key>CFBundlePackageType</key>       <string>APPL</string>
@@ -43,7 +43,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>LSUIElement</key>               <true/>
     <!-- Shown in the permission prompts, so say why rather than leaving it blank. -->
     <key>NSAppleEventsUsageDescription</key>
-    <string>TerminalNavigator asks Terminal which tab each Claude Code session is running in, so it can take you to the right one.</string>
+    <string>ClaudeBar asks Terminal which tab each Claude Code session is running in, so it can take you to the right one.</string>
 </dict>
 </plist>
 PLIST

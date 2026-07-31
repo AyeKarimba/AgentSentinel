@@ -28,7 +28,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         let window = NSWindow(contentRect: content.frame,
                               styleMask: [.titled, .closable],
                               backing: .buffered, defer: false)
-        window.title = "TerminalNavigator Settings"
+        window.title = "ClaudeBar Settings"
         window.contentView = content
         window.delegate = self
         window.isReleasedWhenClosed = false

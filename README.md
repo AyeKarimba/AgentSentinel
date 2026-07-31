@@ -1,13 +1,14 @@
-# TerminalNavigator
+# ClaudeBar
 
 A macOS menu bar app that tells you which Claude Code sessions are waiting on you, and takes
-you to the right terminal tab when you click one.
+you to the right terminal tab when you click one. An unofficial community tool, not
+affiliated with Anthropic. Formerly named TerminalNavigator.
 
 Run Claude Code in six tabs and the hard part stops being the work — it's noticing that one of
 them has been sitting on a permission prompt for ten minutes while you watched a different one
 think. This puts that in the menu bar.
 
-<img src="docs/screenshot.png" alt="TerminalNavigator's menu: two tabs needing attention in red, one already-opened in grey, and one still working in purple" width="430">
+<img src="docs/screenshot.png" alt="ClaudeBar's menu: two tabs needing attention in red, one already-opened in grey, and one still working in purple" width="430">
 
 Colour answers *have you dealt with this*, not *what is it doing* — and the menu explains
 itself, so nobody has to memorise it:
@@ -50,7 +51,7 @@ cd TerminalNavigator
 make install
 ```
 
-That's it. It builds `TerminalNavigator.app`, installs it to `/Applications`, registers the
+That's it. It builds `ClaudeBar.app`, installs it to `/Applications`, registers the
 Claude Code hooks, starts it at login, and launches it. The `>_` icon appears in your menu bar.
 
 To remove everything again:
@@ -235,7 +236,7 @@ Other tools:
 
 ```sh
 python3 scripts/verify-focus.py                   # does a jump switch desktop, or pull the window?
-./.build/debug/TerminalNavigatorApp --dump-menu   # render the menu as text
+./.build/debug/ClaudeBarApp --dump-menu   # render the menu as text
 swift scripts/make-icon.swift                     # regenerate Resources/AppIcon.icns
 ```
 

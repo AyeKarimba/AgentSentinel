@@ -365,7 +365,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         diagnostics.target = self
         menu.addItem(diagnostics)
 
-        let quit = NSMenuItem(title: "Quit TerminalNavigator",
+        let quit = NSMenuItem(title: "Quit ClaudeBar",
                               action: #selector(NSApplication.terminate(_:)),
                               keyEquivalent: "q")
         menu.addItem(quit)

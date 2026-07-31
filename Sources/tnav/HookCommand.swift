@@ -6,7 +6,7 @@ import TNavCore
 ///
 /// Two hard rules:
 ///  1. Always exit 0. A nonzero exit from a hook can block or disturb the session; a bug in
-///     TerminalNavigator must never break the user's Claude Code.
+///     ClaudeBar must never break the user's Claude Code.
 ///  2. Stay fast. Everything here is syscalls and one small file write — no subprocesses.
 enum HookCommand {
     static func run() -> Int32 {

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build, install and start TerminalNavigator.
+# Build, install and start ClaudeBar.
 #
 #   ./scripts/install.sh                 install to /Applications and start at login
 #   ./scripts/install.sh --no-login      do not start it at login
@@ -19,25 +19,39 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-APP="$PREFIX/TerminalNavigator.app"
+APP="$PREFIX/ClaudeBar.app"
 TNAV="$APP/Contents/MacOS/tnav"
-AGENT="$HOME/Library/LaunchAgents/com.github.ayekarimba.terminalnavigator.plist"
+AGENT="$HOME/Library/LaunchAgents/com.github.ayekarimba.claudebar.plist"
 
 # /Applications needs admin rights on some machines; fall back rather than failing late.
 if [ ! -w "$PREFIX" ]; then
     echo "==> $PREFIX is not writable, using ~/Applications instead"
     PREFIX="$HOME/Applications"
     mkdir -p "$PREFIX"
-    APP="$PREFIX/TerminalNavigator.app"
+    APP="$PREFIX/ClaudeBar.app"
     TNAV="$APP/Contents/MacOS/tnav"
 fi
 
 echo "==> Stopping any running copy"
-pkill -f "TerminalNavigator.app/Contents/MacOS/TerminalNavigator" 2>/dev/null || true
-pkill -f "\.build/.*/TerminalNavigatorApp" 2>/dev/null || true
+pkill -f "ClaudeBar.app/Contents/MacOS/ClaudeBar" 2>/dev/null || true
+pkill -f "\.build/.*/ClaudeBarApp" 2>/dev/null || true
 [ -f "$AGENT" ] && launchctl unload "$AGENT" 2>/dev/null || true
 
+# One-time migration from the app's old name, TerminalNavigator. The real app and login item
+# go; a symlink stays behind because Claude Code snapshots hook paths per session, so sessions
+# started before the rename keep calling the old path until they are restarted.
+OLD_AGENT="$HOME/Library/LaunchAgents/com.github.ayekarimba.terminalnavigator.plist"
+pkill -f "TerminalNavigator.app/Contents/MacOS/TerminalNavigator" 2>/dev/null || true
+if [ -f "$OLD_AGENT" ]; then
+    echo "==> Migrating from TerminalNavigator"
+    launchctl unload "$OLD_AGENT" 2>/dev/null || true
+    rm -f "$OLD_AGENT"
+fi
+[ -e "$PREFIX/TerminalNavigator.app" ] && rm -rf "$PREFIX/TerminalNavigator.app"
+
 "$ROOT/scripts/make-app.sh" "$APP"
+
+ln -sfn "$APP" "$PREFIX/TerminalNavigator.app"
 
 echo "==> Registering Claude Code hooks"
 python3 "$ROOT/scripts/register-hooks.py" "$TNAV" | sed 's/^/    /'
@@ -50,8 +64,8 @@ if [ "$LOGIN_ITEM" = "1" ]; then
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>Label</key>            <string>com.github.ayekarimba.terminalnavigator</string>
-    <key>ProgramArguments</key> <array><string>$APP/Contents/MacOS/TerminalNavigator</string></array>
+    <key>Label</key>            <string>com.github.ayekarimba.claudebar</string>
+    <key>ProgramArguments</key> <array><string>$APP/Contents/MacOS/ClaudeBar</string></array>
     <key>RunAtLoad</key>        <true/>
     <key>KeepAlive</key>        <false/>
 </dict>
@@ -67,7 +81,7 @@ fi
 echo
 echo "Installed: $APP"
 echo
-echo "TerminalNavigator is now in your menu bar (look for the >_ icon)."
+echo "ClaudeBar is now in your menu bar (look for the >_ icon)."
 echo "Open the menu once and pick 'App Legend' to see what the colours mean."
 echo
 echo "Two things macOS will ask for, the first time each is needed:"
