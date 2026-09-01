@@ -12,7 +12,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP="${1:-$ROOT/build/ClaudeBar.app}"
-VERSION="1.0.0"
+VERSION="1.0.1"
 
 echo "==> Building release binaries"
 swift build -c release --package-path "$ROOT"

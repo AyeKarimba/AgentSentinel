@@ -220,7 +220,7 @@ the hook, state and UI layers don't change.
 ## Development
 
 ```sh
-make test        # 136 unit tests
+make test        # 148 unit tests
 make check       # unit tests + the hook integration test
 make run         # run from source, without installing
 make app         # build the .app into ./build without installing
