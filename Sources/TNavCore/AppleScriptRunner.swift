@@ -62,17 +62,41 @@ public struct TerminalQueries: Sendable {
         self.runner = runner
     }
 
+    /// Every walk over Terminal's tabs opens with this, never with a bare `tabs of aWindow`.
+    ///
+    /// Terminal's `windows` element is not only terminal windows. Once Shell ▸ New Command…
+    /// (⇧⌘N) has been opened, its panel is listed too, and stays listed after it is dismissed
+    /// (Terminal 2.15, macOS 26.5). Every property of that element reads `missing value` and
+    /// `tabs of` it raises -1728 — so an unguarded walk died on the panel and took the jump
+    /// with it, even though the wanted tab sat in the very next window. The guard hands such a
+    /// window an empty tab list and the walk moves on.
+    ///
+    /// Filtering `windows` up front is the tempting alternative and the wrong one: `whose
+    /// visible is true` also drops miniaturised windows, whose tabs must stay reachable.
+    static let guardedTabWalk = """
+                repeat with aWindow in windows
+                    set windowTabs to {}
+                    try
+                        set windowTabs to tabs of aWindow
+                    end try
+                    repeat with aTab in windowTabs
+        """
+
     /// Returns nil only when no tab owns `tty`; throws if the reply can't be parsed, so a
     /// scripting quirk is never mistaken for "the tab was closed" (which would prune records).
     public func windowInfo(forTTY tty: String) throws -> TerminalWindowInfo? {
         try validateTTY(tty)
+        let raw = try runner.run(Self.windowInfoScript(tty: tty))
+        return try Self.parseWindowInfo(raw)
+    }
+
+    static func windowInfoScript(tty: String) -> String {
         // `linefeed`, not `tab`: inside a `tell application "Terminal"` block Terminal's `tab`
         // class shadows the tab-character constant, and the concatenation yields the literal
         // text "tab" ("85tabwebapp — …"). Window titles cannot contain a newline.
-        let raw = try runner.run("""
+        """
         tell application "Terminal"
-            repeat with aWindow in windows
-                repeat with aTab in tabs of aWindow
+        \(guardedTabWalk)
                     if tty of aTab is "\(tty)" then
                         return ((id of aWindow) as text) & linefeed & (name of aWindow)
                     end if
@@ -80,8 +104,7 @@ public struct TerminalQueries: Sendable {
             end repeat
             return ""
         end tell
-        """)
-        return try Self.parseWindowInfo(raw)
+        """
     }
 
     /// Split out as a pure function so the failure that motivated it stays covered: the reply
@@ -104,10 +127,13 @@ public struct TerminalQueries: Sendable {
     /// before raising, so the correct tab is already showing when the window appears.
     public func selectTab(tty: String) throws {
         try validateTTY(tty)
-        _ = try runner.run("""
+        _ = try runner.run(Self.selectTabScript(tty: tty))
+    }
+
+    static func selectTabScript(tty: String) -> String {
+        """
         tell application "Terminal"
-            repeat with aWindow in windows
-                repeat with aTab in tabs of aWindow
+        \(guardedTabWalk)
                     if tty of aTab is "\(tty)" then
                         set selected of aTab to true
                         return "ok"
@@ -116,7 +142,7 @@ public struct TerminalQueries: Sendable {
             end repeat
             return "notFound"
         end tell
-        """)
+        """
     }
 
     public func frontmostTTY() throws -> String? {
@@ -137,23 +163,28 @@ public struct TerminalQueries: Sendable {
     }
 
     public func knownTTYs() throws -> [String] {
-        let result = try runner.run("""
+        let result = try runner.run(Self.knownTTYsScript)
+        return result.split(separator: "\n").map(String.init).filter { !$0.isEmpty }
+    }
+
+    static let knownTTYsScript = """
         tell application "Terminal"
             set found to {}
-            repeat with aWindow in windows
-                repeat with aTab in tabs of aWindow
+        \(guardedTabWalk)
                     set end of found to tty of aTab
                 end repeat
             end repeat
             set AppleScript's text item delimiters to linefeed
             return found as text
         end tell
-        """)
-        return result.split(separator: "\n").map(String.init).filter { !$0.isEmpty }
-    }
+        """
 
     public func setTitle(_ title: String?, tty: String) throws {
         try validateTTY(tty)
+        _ = try runner.run(Self.setTitleScript(title, tty: tty))
+    }
+
+    static func setTitleScript(_ title: String?, tty: String) -> String {
         // `custom title` is inert unless `title displays custom title` is also on.
         let body: String
         if let title {
@@ -167,10 +198,9 @@ public struct TerminalQueries: Sendable {
                             set custom title of aTab to ""
             """
         }
-        _ = try runner.run("""
+        return """
         tell application "Terminal"
-            repeat with aWindow in windows
-                repeat with aTab in tabs of aWindow
+        \(guardedTabWalk)
                     if tty of aTab is "\(tty)" then
         \(body)
                         return "ok"
@@ -179,7 +209,7 @@ public struct TerminalQueries: Sendable {
             end repeat
             return "notFound"
         end tell
-        """)
+        """
     }
 }
 #endif

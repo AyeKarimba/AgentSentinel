@@ -26,33 +26,36 @@ public final class TerminalAppController: TabController {
 
     public func focus(tty: String) throws -> FocusOutcome {
         try validateTTY(tty)
-        // Resolve to a `window id` before mutating anything. `repeat with aWindow in windows`
+        let result = try runner.run(Self.focusScript(tty: tty))
+        return FocusOutcome(rawValue: result) ?? .notFound
+    }
+
+    static func focusScript(tty: String) -> String {
+        // Resolve to a `window id` before reordering anything. `repeat with aWindow in windows`
         // hands back index-based references ("window 3 of ..."), and `set index to 1`
         // reorders the window list — so a held reference silently starts pointing at a
         // different window and the focus lands on the wrong one. `window id` is stable.
-        let source = """
+        //
+        // The tab itself is selected while still inside the walk: nothing has been reordered
+        // yet, so the tab reference is still good, and selecting a tab moves no windows.
+        """
         tell application "Terminal"
             set targetWindowId to missing value
-            set targetTabIndex to 0
-            repeat with aWindow in windows
-                if targetWindowId is not missing value then exit repeat
-                set tabIndex to 0
-                repeat with aTab in tabs of aWindow
-                    set tabIndex to tabIndex + 1
+        \(TerminalQueries.guardedTabWalk)
                     if tty of aTab is "\(tty)" then
                         set targetWindowId to id of aWindow
-                        set targetTabIndex to tabIndex
+                        try
+                            set selected of aTab to true
+                        end try
                         exit repeat
                     end if
                 end repeat
+                if targetWindowId is not missing value then exit repeat
             end repeat
             if targetWindowId is missing value then return "notFound"
             set theWindow to window id targetWindowId
             try
                 if miniaturized of theWindow then set miniaturized of theWindow to false
-            end try
-            try
-                set selected of tab targetTabIndex of theWindow to true
             end try
             try
                 set index of theWindow to 1
@@ -64,8 +67,6 @@ public final class TerminalAppController: TabController {
             return "focused"
         end tell
         """
-        let result = try runner.run(source)
-        return FocusOutcome(rawValue: result) ?? .notFound
     }
 
     public func frontmostTTY() throws -> String? { try queries.frontmostTTY() }
