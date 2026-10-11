@@ -49,7 +49,7 @@ The icon follows the same scale, so a glance at the menu bar is enough:
 | Agent | How it's wired | Verified live |
 |---|---|---|
 | Claude Code | hooks in `~/.claude/settings.json` | yes |
-| Codex CLI | hooks in `~/.codex/hooks.json` — after installing, start `codex`, type `/hooks` and accept the AgentSentinel entries, or they are silently skipped | yes |
+| Codex CLI | hooks in `~/.codex/hooks.json` — after installing, start `codex`, type `/hooks` and accept the AgentSentinel entries, or they are silently skipped | partly — SessionStart/UserPromptSubmit captured live; Stop and PermissionRequest from the docs |
 | Gemini CLI | hooks in `~/.gemini/settings.json` | not yet — hooks are registered from the documented payload shape; please report what you see |
 | Copilot CLI | `~/.copilot/hooks/agentsentinel.json` | not yet — same |
 
@@ -191,6 +191,7 @@ which focus backend is live, which covers most of these.
 |---|---|
 | Nothing in the menu, ever | Hooks aren't registered for that agent. Diagnostics lists each agent; use its Register button or re-run `make install`. |
 | Codex sessions never appear | Codex skips hooks it has not been told to trust. Start `codex`, type `/hooks`, accept the AgentSentinel entries. |
+| Gemini hooks won't register | `~/.gemini/settings.json` may contain comments; this tool refuses files it cannot round-trip. Paste the snippet the installer prints, or remove the comments and re-run. |
 | A session you're already running doesn't appear | Expected. Records are created by hook events, so send a message in that tab and it shows up. New sessions appear immediately. |
 | "Could not switch to that tab" | Automation permission for Terminal was denied. System Settings → Privacy & Security → Automation. |
 | Jumping brings the window to you instead of switching desktop | A macOS limitation, not a bug — see [above](#known-limitation-other-desktops). |
