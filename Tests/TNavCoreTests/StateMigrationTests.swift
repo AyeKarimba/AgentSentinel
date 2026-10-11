@@ -45,6 +45,15 @@ final class StateMigrationTests: XCTestCase {
         XCTAssertEqual(try String(contentsOf: new.appendingPathComponent("config.json")), #"{"paused":false}"#)
     }
 
+    func testSkipsBareSessionWhenPrefixedRecordAlreadyExists() throws {
+        try write(old.appendingPathComponent("sessions/abc.json"), "{}")
+        try write(old.appendingPathComponent("sessions/def.json"), "{}")
+        try write(new.appendingPathComponent("sessions/claude-abc.json"), "{}")
+        let copied = StateMigration.run(from: old, to: new)
+        XCTAssertEqual(copied, ["sessions/def.json"])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: new.appendingPathComponent("sessions/abc.json").path))
+    }
+
     func testNoOldDirectoryIsANoOp() {
         XCTAssertEqual(StateMigration.run(from: base.appendingPathComponent("nope"), to: new), [])
         XCTAssertFalse(FileManager.default.fileExists(atPath: new.path))

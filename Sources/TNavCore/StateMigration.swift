@@ -31,6 +31,13 @@ public enum StateMigration {
             let source = old.appendingPathComponent(relative)
             let target = new.appendingPathComponent(relative)
             guard fm.fileExists(atPath: source.path), !fm.fileExists(atPath: target.path) else { continue }
+            // A bare sessions/<name>.json is a 1.0.1 Claude record; if a running Claude session
+            // already wrote sessions/claude-<name>.json here, copying it would list that session twice.
+            if relative.hasPrefix("sessions/") {
+                let name = (relative as NSString).lastPathComponent
+                let prefixed = new.appendingPathComponent("sessions/claude-\(name)")
+                if fm.fileExists(atPath: prefixed.path) { continue }
+            }
             do {
                 try fm.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try fm.copyItem(at: source, to: target)
@@ -67,7 +74,8 @@ public enum StateMigration {
     /// The app calls this at launch. A no-op when `TNAV_STATE_DIR` points somewhere else, so
     /// tests and scratch runs never touch the real legacy directory.
     public static func runIfNeeded() {
-        guard ProcessInfo.processInfo.environment[Paths.stateDirectoryVariable] == nil else { return }
+        let override = ProcessInfo.processInfo.environment[Paths.stateDirectoryVariable]
+        guard override == nil || override!.isEmpty else { return }
         let copied = runOnce(from: Paths.legacyRoot, to: Paths.root)
         if !copied.isEmpty {
             EventLog.append("migration: copied \(copied.count) file(s) from \(Paths.legacyRoot.path)")

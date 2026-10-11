@@ -52,6 +52,11 @@ final class CopilotAdapterTests: XCTestCase {
         XCTAssertEqual(hook.event, .needsPermission(message: "Copilot wants to run bash"))
     }
 
+    func testPascalCaseEventNameInPayloadStillMaps() throws {
+        let hook = try decode(#"{"session_id":"cp-3","cwd":"/p","hook_event_name":"Notification","notification_type":"permission_prompt","message":"m"}"#, hint: nil)
+        XCTAssertEqual(hook.event, .needsPermission(message: "m"))
+    }
+
     func testOtherNotificationTypesAreIgnored() throws {
         // `agent_idle` is about a background agent, not the main session; not our business.
         let hook = try decode("{\(common),\"message\":\"idle\",\"notification_type\":\"agent_idle\"}", hint: "notification")

@@ -10,9 +10,14 @@ public struct CopilotAdapter: AgentAdapter {
 
     public init() {}
 
+    /// VS Code-format payloads spell events PascalCase ("Notification"); Copilot's are camelCase.
+    private static func lowercasingFirst(_ text: String) -> String {
+        text.prefix(1).lowercased() + text.dropFirst()
+    }
+
     public func decode(_ data: Data, eventHint: String?) throws -> DecodedHook {
         let object = try HookJSON.object(data)
-        let name = HookJSON.string(object, "hook_event_name") ?? eventHint ?? ""
+        let name = HookJSON.string(object, "hook_event_name").map(Self.lowercasingFirst) ?? eventHint ?? ""
         let event: AgentEvent?
         switch name {
         case "sessionStart": event = .sessionStart

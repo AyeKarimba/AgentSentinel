@@ -40,7 +40,7 @@ public enum SessionState: String, Codable, Sendable {
 
 public struct SessionRecord: Codable, Equatable, Sendable {
     public var sessionId: String
-    /// Which agent this session belongs to. Absent in records written before 1.1, which
+    /// Which agent this session belongs to. Absent in records written before 2.0, which
     /// were all Claude's.
     public var agent: AgentKind
     /// Model name when the agent's payload states it (Codex does); nil otherwise.

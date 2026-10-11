@@ -49,12 +49,13 @@ enum HookCommand {
 
     private static func process(_ arguments: [String]) throws {
         let (agent, eventHint) = parse(arguments)
+        // Read stdin first, even for an unknown agent, so a writer never sees EPIPE.
+        let data = FileHandle.standardInput.readDataToEndOfFile()
         guard let adapter = AgentRegistry.adapter(for: agent) else {
             EventLog.append("hook: no adapter for agent '\(agent.rawValue)'")
             return
         }
 
-        let data = FileHandle.standardInput.readDataToEndOfFile()
         guard !data.isEmpty else {
             EventLog.append("hook(\(agent.rawValue)): empty stdin")
             return
