@@ -61,50 +61,61 @@ public enum HookProcessor {
                                           escalated: false,
                                           lastAssistantMessage: nil))
 
-        case .turnComplete, .idlePrompt, .needsPermission:
-            let reason: WaitReason
-            let message: String?
-            switch event {
-            case .turnComplete(let last): reason = .turnComplete; message = last
-            case .idlePrompt: reason = .idlePrompt; message = nil
-            case .needsPermission(let text): reason = .permission; message = text
-            default: fatalError("unreachable")
-            }
+        case .turnComplete(let last):
+            return waiting(agent: agent, hook: hook, identity: identity, existing: existing,
+                           model: model, reason: .turnComplete, message: last, now: now)
 
-            let wasWaiting = existing?.state == .waiting
+        case .idlePrompt:
+            return waiting(agent: agent, hook: hook, identity: identity, existing: existing,
+                           model: model, reason: .idlePrompt, message: nil, now: now)
 
-            // Keep the original wait start so elapsed time and escalation measure the real
-            // wait, not the most recent event.
-            let since = wasWaiting ? (existing?.since ?? now) : now
-
-            // A changed reason is new information the user cannot have seen, so it restarts
-            // the "have you looked at it" clock even though the wait clock keeps running. A
-            // repeat of the same reason does not: the user having decided to leave a request
-            // sitting is not grounds for the badge to keep re-flagging it at them.
-            let reasonChanged = !wasWaiting || existing?.reason != reason
-            let reasonSince = reasonChanged ? now : (existing?.reasonSince ?? since)
-
-            // Re-arm notification when urgency climbs: a soft "finished" ping followed by a
-            // permission request should sound again, at the higher tier.
-            let urgencyClimbed = wasWaiting
-                && existing?.urgency == .normal
-                && reason.urgency == .urgent
-            let notified = wasWaiting && !urgencyClimbed ? (existing?.notified ?? false) : false
-            let escalated = wasWaiting && !urgencyClimbed ? (existing?.escalated ?? false) : false
-
-            return .updated(SessionRecord(sessionId: hook.sessionId,
-                                          agent: agent,
-                                          model: model,
-                                          tty: identity.tty,
-                                          pid: identity.sessionPid,
-                                          cwd: hook.cwd,
-                                          state: .waiting,
-                                          reason: reason,
-                                          since: since,
-                                          reasonSince: reasonSince,
-                                          notified: notified,
-                                          escalated: escalated,
-                                          lastAssistantMessage: message ?? existing?.lastAssistantMessage))
+        case .needsPermission(let text):
+            return waiting(agent: agent, hook: hook, identity: identity, existing: existing,
+                           model: model, reason: .permission, message: text, now: now)
         }
+    }
+
+    private static func waiting(agent: AgentKind,
+                                hook: DecodedHook,
+                                identity: SessionIdentity,
+                                existing: SessionRecord?,
+                                model: String?,
+                                reason: WaitReason,
+                                message: String?,
+                                now: Double) -> HookOutcome {
+        let wasWaiting = existing?.state == .waiting
+
+        // Keep the original wait start so elapsed time and escalation measure the real
+        // wait, not the most recent event.
+        let since = wasWaiting ? (existing?.since ?? now) : now
+
+        // A changed reason is new information the user cannot have seen, so it restarts
+        // the "have you looked at it" clock even though the wait clock keeps running. A
+        // repeat of the same reason does not: the user having decided to leave a request
+        // sitting is not grounds for the badge to keep re-flagging it at them.
+        let reasonChanged = !wasWaiting || existing?.reason != reason
+        let reasonSince = reasonChanged ? now : (existing?.reasonSince ?? since)
+
+        // Re-arm notification when urgency climbs: a soft "finished" ping followed by a
+        // permission request should sound again, at the higher tier.
+        let urgencyClimbed = wasWaiting
+            && existing?.urgency == .normal
+            && reason.urgency == .urgent
+        let notified = wasWaiting && !urgencyClimbed ? (existing?.notified ?? false) : false
+        let escalated = wasWaiting && !urgencyClimbed ? (existing?.escalated ?? false) : false
+
+        return .updated(SessionRecord(sessionId: hook.sessionId,
+                                      agent: agent,
+                                      model: model,
+                                      tty: identity.tty,
+                                      pid: identity.sessionPid,
+                                      cwd: hook.cwd,
+                                      state: .waiting,
+                                      reason: reason,
+                                      since: since,
+                                      reasonSince: reasonSince,
+                                      notified: notified,
+                                      escalated: escalated,
+                                      lastAssistantMessage: message ?? existing?.lastAssistantMessage))
     }
 }
