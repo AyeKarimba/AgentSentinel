@@ -105,7 +105,7 @@ enum Diagnostics {
         }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
-        process.arguments = [script.path, "--tnav", tnav, "--agents", kind.rawValue]
+        process.arguments = ["-B", script.path, "--tnav", tnav, "--agents", kind.rawValue]
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = pipe
