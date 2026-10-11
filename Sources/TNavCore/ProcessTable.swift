@@ -1,7 +1,7 @@
 import Darwin
 import Foundation
 
-/// One row of the kernel process table, reduced to what ClaudeBar needs: who the
+/// One row of the kernel process table, reduced to what AgentSentinel needs: who the
 /// parent is, which terminal owns the process, and enough naming detail to recognise Claude
 /// Code reliably.
 public struct ProcessRow: Equatable, Sendable {

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build, install and start ClaudeBar.
+# Build, install and start AgentSentinel.
 #
 #   ./scripts/install.sh                 install to /Applications and start at login
 #   ./scripts/install.sh --no-login      do not start it at login
@@ -17,27 +17,27 @@ while [ $# -gt 0 ]; do
         --no-login) LOGIN_ITEM=0; shift ;;
         --prefix)   PREFIX="${2%/}"; shift 2 ;;
         --agents)   AGENTS="$2"; shift 2 ;;
-        -h|--help)  sed -n '2,8p' "$0"; exit 0 ;;
+        -h|--help)  sed -n '2,7p' "$0"; exit 0 ;;
         *) echo "unknown option: $1" >&2; exit 2 ;;
     esac
 done
 
-APP="$PREFIX/ClaudeBar.app"
+APP="$PREFIX/AgentSentinel.app"
 TNAV="$APP/Contents/MacOS/tnav"
-AGENT="$HOME/Library/LaunchAgents/com.github.ayekarimba.claudebar.plist"
+AGENT="$HOME/Library/LaunchAgents/com.github.ayekarimba.agentsentinel.plist"
 
 # /Applications needs admin rights on some machines; fall back rather than failing late.
 if [ ! -w "$PREFIX" ]; then
     echo "==> $PREFIX is not writable, using ~/Applications instead"
     PREFIX="$HOME/Applications"
     mkdir -p "$PREFIX"
-    APP="$PREFIX/ClaudeBar.app"
+    APP="$PREFIX/AgentSentinel.app"
     TNAV="$APP/Contents/MacOS/tnav"
 fi
 
 echo "==> Stopping any running copy"
-pkill -f "ClaudeBar.app/Contents/MacOS/ClaudeBar" 2>/dev/null || true
-pkill -f "\.build/.*/ClaudeBarApp" 2>/dev/null || true
+pkill -f "AgentSentinel.app/Contents/MacOS/AgentSentinel" 2>/dev/null || true
+pkill -f "\.build/.*/AgentSentinelApp" 2>/dev/null || true
 [ -f "$AGENT" ] && launchctl unload "$AGENT" 2>/dev/null || true
 
 # One-time migration from the app's old name, TerminalNavigator. The real app and login item
@@ -52,9 +52,21 @@ if [ -f "$OLD_AGENT" ]; then
 fi
 [ -e "$PREFIX/TerminalNavigator.app" ] && rm -rf "$PREFIX/TerminalNavigator.app"
 
+# Same again for the second name, ClaudeBar. Its login item and bundle go; a symlink stays so
+# hooks snapshotted under the old path keep working until those sessions restart.
+CB_AGENT="$HOME/Library/LaunchAgents/com.github.ayekarimba.claudebar.plist"
+pkill -f "ClaudeBar.app/Contents/MacOS/ClaudeBar" 2>/dev/null || true
+if [ -f "$CB_AGENT" ]; then
+    echo "==> Migrating from ClaudeBar"
+    launchctl unload "$CB_AGENT" 2>/dev/null || true
+    rm -f "$CB_AGENT"
+fi
+[ -e "$PREFIX/ClaudeBar.app" ] && [ ! -L "$PREFIX/ClaudeBar.app" ] && rm -rf "$PREFIX/ClaudeBar.app"
+
 "$ROOT/scripts/make-app.sh" "$APP"
 
 ln -sfn "$APP" "$PREFIX/TerminalNavigator.app"
+ln -sfn "$APP" "$PREFIX/ClaudeBar.app"
 
 echo "==> Registering hooks"
 if [ -n "$AGENTS" ]; then
@@ -71,8 +83,8 @@ if [ "$LOGIN_ITEM" = "1" ]; then
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>Label</key>            <string>com.github.ayekarimba.claudebar</string>
-    <key>ProgramArguments</key> <array><string>$APP/Contents/MacOS/ClaudeBar</string></array>
+    <key>Label</key>            <string>com.github.ayekarimba.agentsentinel</string>
+    <key>ProgramArguments</key> <array><string>$APP/Contents/MacOS/AgentSentinel</string></array>
     <key>RunAtLoad</key>        <true/>
     <key>KeepAlive</key>        <false/>
 </dict>
@@ -88,7 +100,7 @@ fi
 echo
 echo "Installed: $APP"
 echo
-echo "ClaudeBar is now in your menu bar (look for the >_ icon)."
+echo "AgentSentinel is now in your menu bar (look for the >_ icon)."
 echo "Open the menu once and pick 'App Legend' to see what the colours mean."
 echo
 echo "Two things macOS will ask for, the first time each is needed:"
