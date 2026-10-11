@@ -199,6 +199,27 @@ check_absent "gemini record removed"
 AGENT=claude
 
 echo
+echo "=== copilot ==="
+AGENT=copilot
+C_SESSION="cp-$$"
+STATE="$TNAV_STATE_DIR/sessions/copilot-$C_SESSION.json"
+EXTRA_ARGS=(--event sessionStart)
+emit "\"sessionId\":\"$C_SESSION\",\"cwd\":\"$CWD\",\"timestamp\":1789730418873,\"source\":\"new\""
+check "copilot record is working" '.state' 'working'
+check "agent recorded"            '.agent' 'copilot'
+EXTRA_ARGS=(--event agentStop)
+emit "\"sessionId\":\"$C_SESSION\",\"cwd\":\"$CWD\",\"timestamp\":1789730418900,\"stopReason\":\"end_turn\""
+check "agentStop is turn_complete" '.reason' 'turn_complete'
+EXTRA_ARGS=(--event permissionRequest)
+emit "\"sessionId\":\"$C_SESSION\",\"cwd\":\"$CWD\",\"timestamp\":1789730418950,\"toolName\":\"bash\",\"toolArgs\":{}"
+check "permissionRequest is urgent" '.reason' 'permission'
+EXTRA_ARGS=(--event sessionEnd)
+emit "\"sessionId\":\"$C_SESSION\",\"cwd\":\"$CWD\",\"timestamp\":1789730419000,\"reason\":\"exit\""
+check_absent "copilot record removed"
+EXTRA_ARGS=()
+AGENT=claude
+
+echo
 if [ $failures -eq 0 ]; then
   echo "integration: all checks passed"
 else

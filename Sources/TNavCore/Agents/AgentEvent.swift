@@ -64,6 +64,7 @@ public enum AgentRegistry {
         case .claude: return ClaudeAdapter()
         case .codex: return CodexAdapter()
         case .gemini: return GeminiAdapter()
+        case .copilot: return CopilotAdapter()
         default: return nil
         }
     }
