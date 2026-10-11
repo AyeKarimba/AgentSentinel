@@ -95,6 +95,26 @@ class ClaudeTests(RegistrarCase):
         }})
         self.assertTrue(claude.registered(self.home))
 
+    def test_remove_leaves_file_without_our_entries_untouched(self):
+        full = self.path(".claude/settings.json")
+        os.makedirs(os.path.dirname(full))
+        raw = '{"theme":"Caf\u00e9","hooks":{"Stop":[{"hooks":[{"type":"command","command":"/opt/x.sh"}]}]}}'
+        with open(full, "w", encoding="utf-8") as handle:
+            handle.write(raw)
+        claude.remove(self.home)
+        with open(full, encoding="utf-8") as handle:
+            self.assertEqual(handle.read(), raw)
+        self.assertFalse(os.path.exists(full + ".tnav-backup"))
+
+    def test_malformed_hooks_shape_does_not_crash(self):
+        self.write(".claude/settings.json", {"hooks": {"Stop": [{"hooks": None}]}})
+        self.assertFalse(claude.registered(self.home))
+        claude.remove(self.home)
+        try:
+            claude.register(self.home, TNAV)
+        except common.RegistrarError:
+            pass
+
 
 class CodexTests(RegistrarCase):
     def test_creates_hooks_json_when_absent(self):
@@ -157,6 +177,12 @@ class CopilotTests(RegistrarCase):
         copilot.remove(self.home)
         self.assertFalse(os.path.exists(self.path(".copilot/hooks/agentsentinel.json")))
         self.assertTrue(os.path.exists(self.path(".copilot/hooks/other.json")))
+
+    def test_registered_false_when_hooks_is_a_list(self):
+        self.write(".copilot/hooks/agentsentinel.json", {"version": 1, "hooks": ["x"]})
+        self.assertFalse(copilot.registered(self.home))
+        self.write(".copilot/hooks/agentsentinel.json", {"version": 1, "hooks": {"agentStop": ["x"]}})
+        self.assertFalse(copilot.registered(self.home))
 
 
 if __name__ == "__main__":

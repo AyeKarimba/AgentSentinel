@@ -4,6 +4,7 @@ Every config file these touch belongs to the user and may hold other tools' hook
 very same events. So: merge rather than write, remove only entries recognisable as ours,
 back up first, write atomically, and never touch a file that does not parse.
 """
+import copy
 import json
 import os
 import shutil
@@ -52,9 +53,11 @@ def strip_grouped(hooks):
     {event: [{"matcher"?: str, "hooks": [{"type": "command", "command": str}]}]}.
     Drops a group left empty by the removal, and an event left with no groups."""
     for event in list(hooks):
+        if not isinstance(hooks.get(event), list):
+            continue                          # a shape we do not understand is not ours to touch
         groups = []
-        for group in hooks.get(event) or []:
-            if not isinstance(group, dict):
+        for group in hooks[event]:
+            if not isinstance(group, dict) or not isinstance(group.get("hooks", []), list):
                 groups.append(group)
                 continue
             kept = [h for h in group.get("hooks", [])
@@ -77,7 +80,9 @@ def merge_grouped(hooks, events, command, extra=None):
     if extra:
         entry.update(extra)
     for event in events:
-        hooks.setdefault(event, []).append({"hooks": [entry]})
+        if not isinstance(hooks.setdefault(event, []), list):
+            raise RegistrarError(f"hooks for '{event}' is not a list; leaving the file untouched")
+        hooks[event].append({"hooks": [entry]})
     return hooks
 
 
@@ -87,8 +92,9 @@ def grouped_has_ours(hooks, events, marker):
         return False
     for event in events:
         found = False
-        for group in hooks.get(event) or []:
-            if not isinstance(group, dict):
+        groups = hooks.get(event)
+        for group in groups if isinstance(groups, list) else []:
+            if not isinstance(group, dict) or not isinstance(group.get("hooks", []), list):
                 continue
             for h in group.get("hooks", []):
                 command = h.get("command", "") if isinstance(h, dict) else str(h)
@@ -143,12 +149,16 @@ def grouped_registrar(kind, config_rel, root_key, events, required_events, legac
         if not data:
             return f"no {path}; nothing to remove"
         hooks = data.get(root_key) or {}
-        if isinstance(hooks, dict):
-            strip_grouped(hooks)
-            if hooks:
-                data[root_key] = hooks
-            else:
-                data.pop(root_key, None)
+        if not isinstance(hooks, dict):
+            return f"nothing of ours in {path}"
+        before = copy.deepcopy(hooks)
+        strip_grouped(hooks)
+        if hooks == before:
+            return f"nothing of ours in {path}"
+        if hooks:
+            data[root_key] = hooks
+        else:
+            data.pop(root_key, None)
         write_json_atomic(path, data)
         return f"removed {kind} hooks from {path}"
 

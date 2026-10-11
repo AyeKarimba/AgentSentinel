@@ -22,9 +22,16 @@ def registered(home, tnav=None):
         return False
     if not data:
         return False
-    hooks = data.get("hooks") or {}
-    return all(any("tnav hook --agent copilot" in (h.get("bash", "")) for h in hooks.get(e, []))
-               for e in ("agentStop", "permissionRequest"))
+    hooks = data.get("hooks")
+    if not isinstance(hooks, dict):
+        return False
+
+    def has_ours(event):
+        entries = hooks.get(event)
+        return isinstance(entries, list) and any(
+            isinstance(h, dict) and "tnav hook --agent copilot" in str(h.get("bash", ""))
+            for h in entries)
+    return all(has_ours(e) for e in ("agentStop", "permissionRequest"))
 
 
 def register(home, tnav):
