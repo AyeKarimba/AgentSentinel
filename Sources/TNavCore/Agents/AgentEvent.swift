@@ -63,6 +63,7 @@ public enum AgentRegistry {
         switch kind {
         case .claude: return ClaudeAdapter()
         case .codex: return CodexAdapter()
+        case .gemini: return GeminiAdapter()
         default: return nil
         }
     }

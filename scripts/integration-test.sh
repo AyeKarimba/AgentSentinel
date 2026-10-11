@@ -182,6 +182,23 @@ check_absent "codex record removed"
 AGENT=claude
 
 echo
+echo "=== gemini ==="
+AGENT=gemini
+G_SESSION="gem-$$"
+STATE="$TNAV_STATE_DIR/sessions/gemini-$G_SESSION.json"
+emit "\"session_id\":\"$G_SESSION\",\"cwd\":\"$CWD\",\"hook_event_name\":\"BeforeAgent\",\"prompt\":\"go\",\"timestamp\":\"2026-10-10T00:00:00Z\""
+check "gemini record is working" '.state' 'working'
+check "agent recorded"           '.agent' 'gemini'
+emit "\"session_id\":\"$G_SESSION\",\"cwd\":\"$CWD\",\"hook_event_name\":\"AfterAgent\",\"prompt\":\"go\",\"prompt_response\":\"Done.\""
+check "AfterAgent is turn_complete" '.reason' 'turn_complete'
+check "response captured"        '.lastAssistantMessage' 'Done.'
+emit "\"session_id\":\"$G_SESSION\",\"cwd\":\"$CWD\",\"hook_event_name\":\"Notification\",\"notification_type\":\"ToolPermission\",\"message\":\"Allow?\""
+check "ToolPermission is urgent" '.reason' 'permission'
+emit "\"session_id\":\"$G_SESSION\",\"cwd\":\"$CWD\",\"hook_event_name\":\"SessionEnd\",\"reason\":\"exit\""
+check_absent "gemini record removed"
+AGENT=claude
+
+echo
 if [ $failures -eq 0 ]; then
   echo "integration: all checks passed"
 else
