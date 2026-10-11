@@ -159,6 +159,29 @@ else
 fi
 
 echo
+echo "=== codex ==="
+AGENT=codex
+CODEX_SESSION="01a1-codex-$$"
+STATE="$TNAV_STATE_DIR/sessions/codex-$CODEX_SESSION.json"
+emit "\"session_id\":\"$CODEX_SESSION\",\"cwd\":\"$CWD\",\"hook_event_name\":\"SessionStart\",\"model\":\"gpt-5\",\"source\":\"startup\""
+check "codex record is working"   '.state' 'working'
+check "agent recorded"            '.agent' 'codex'
+check "model recorded"            '.model' 'gpt-5'
+
+echo "PermissionRequest prints nothing on stdout and marks urgent"
+emit "\"session_id\":\"$CODEX_SESSION\",\"cwd\":\"$CWD\",\"hook_event_name\":\"PermissionRequest\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"ls\",\"description\":\"List files\"}"
+check "needs permission"          '.reason' 'permission'
+check "message is the description" '.lastAssistantMessage' 'List files'
+check "model survives an event without it" '.model' 'gpt-5'
+
+emit "\"session_id\":\"$CODEX_SESSION\",\"cwd\":\"$CWD\",\"hook_event_name\":\"Stop\",\"last_assistant_message\":\"Done.\""
+check "stop is turn_complete"     '.reason' 'turn_complete'
+
+emit "\"session_id\":\"$CODEX_SESSION\",\"cwd\":\"$CWD\",\"hook_event_name\":\"SessionEnd\",\"reason\":\"other\""
+check_absent "codex record removed"
+AGENT=claude
+
+echo
 if [ $failures -eq 0 ]; then
   echo "integration: all checks passed"
 else

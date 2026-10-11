@@ -62,6 +62,7 @@ public enum AgentRegistry {
     public static func adapter(for kind: AgentKind) -> AgentAdapter? {
         switch kind {
         case .claude: return ClaudeAdapter()
+        case .codex: return CodexAdapter()
         default: return nil
         }
     }
