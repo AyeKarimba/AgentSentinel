@@ -9,12 +9,12 @@ Run four agents in six tabs and the hard part stops being the work — it's noti
 them has been sitting on a permission prompt for ten minutes while you watched a different one
 think. This puts that in the menu bar.
 
-<img src="docs/screenshot.png" alt="AgentSentinel's menu: two tabs needing attention in red, one already-opened in grey, and one still working in purple" width="430">
+<img src="docs/screenshot.png" alt="AgentSentinel's menu: a Claude Code tab waiting on permission in red, a Gemini CLI tab that finished its turn in orange, a Codex tab already opened in grey, and a Copilot CLI tab still working in purple" width="400">
 
 Colour answers *have you dealt with this*, not *what is it doing* — and the menu explains
 itself, so nobody has to memorise it:
 
-<img src="docs/legend.png" alt="The App Legend submenu, listing every colour and marker with its meaning" width="470">
+<img src="docs/legend.png" alt="The App Legend submenu: the colour of each row, the menu bar icon states, the two-letter agent tags, and the row buttons" width="470">
 
 In short:
 
