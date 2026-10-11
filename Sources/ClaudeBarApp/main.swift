@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var alerter: Alerter?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        StateMigration.runIfNeeded()
         NSApp.setActivationPolicy(.accessory)
 
         let controller = StatusItemController(monitor: monitor)
