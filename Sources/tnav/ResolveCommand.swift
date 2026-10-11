@@ -32,7 +32,8 @@ enum ResolveCommand {
             resolved:
               tty              \(identity.tty)
               sessionPid       \(identity.sessionPid)
-              claudeAncestors  \(identity.claudeAncestors)
+              agentAncestors   \(identity.agentAncestors)
+              nearestAgent     \(identity.nearestAgent?.rawValue ?? "-")
               nested           \(identity.isNested)
             """)
 

@@ -28,7 +28,7 @@ final class TTYResolverTests: XCTestCase {
         let identity = TTYResolver(table: topLevelChain).resolve(from: 19703)
         XCTAssertEqual(identity?.tty, "/dev/ttys002")
         XCTAssertEqual(identity?.sessionPid, 12691, "should watch the claude process, not the shell")
-        XCTAssertEqual(identity?.claudeAncestors, 1)
+        XCTAssertEqual(identity?.agentAncestors, 1)
         XCTAssertEqual(identity?.isNested, false)
     }
 
@@ -36,7 +36,7 @@ final class TTYResolverTests: XCTestCase {
         let identity = TTYResolver(table: nestedChain).resolve(from: 19594)
         // It still resolves a tty — the point is that it knows not to trust it.
         XCTAssertEqual(identity?.tty, "/dev/ttys003")
-        XCTAssertEqual(identity?.claudeAncestors, 2)
+        XCTAssertEqual(identity?.agentAncestors, 2)
         XCTAssertEqual(identity?.isNested, true,
                        "two claude ancestors means the tty belongs to the parent session")
     }
@@ -58,7 +58,7 @@ final class TTYResolverTests: XCTestCase {
         let identity = TTYResolver(table: wrapped).resolve(from: 500)
         XCTAssertEqual(identity?.tty, "/dev/ttys009")
         XCTAssertEqual(identity?.sessionPid, 450)
-        XCTAssertEqual(identity?.claudeAncestors, 0)
+        XCTAssertEqual(identity?.agentAncestors, 0)
         XCTAssertEqual(identity?.isNested, false)
     }
 
@@ -96,7 +96,7 @@ final class TTYResolverTests: XCTestCase {
 
     func testIdentifiesClaudeByArgv0WhenPCommIsTheVersionString() {
         let identity = TTYResolver(table: versionNamedChain).resolve(from: 900)
-        XCTAssertEqual(identity?.claudeAncestors, 1,
+        XCTAssertEqual(identity?.agentAncestors, 1,
                        "p_comm is '2.1.220'; argv0 'claude' must still be recognised")
         XCTAssertEqual(identity?.sessionPid, 800)
         XCTAssertEqual(identity?.isNested, false)
@@ -111,7 +111,7 @@ final class TTYResolverTests: XCTestCase {
         ])
         let matcher = ClaudeMatcher(referenceExecutablePath: execPath)
         let identity = TTYResolver(table: chain, matcher: matcher).resolve(from: 900)
-        XCTAssertEqual(identity?.claudeAncestors, 1)
+        XCTAssertEqual(identity?.agentAncestors, 1)
         XCTAssertEqual(identity?.sessionPid, 800)
     }
 
@@ -127,7 +127,7 @@ final class TTYResolverTests: XCTestCase {
             ProcessRow(pid: 910, ppid: 1, tty: "/dev/ttys003", command: "-zsh", argv0: "-zsh"),
         ])
         let identity = TTYResolver(table: chain).resolve(from: 950)
-        XCTAssertEqual(identity?.claudeAncestors, 2)
+        XCTAssertEqual(identity?.agentAncestors, 2)
         XCTAssertEqual(identity?.isNested, true)
     }
 
@@ -165,7 +165,7 @@ final class TTYResolverTests: XCTestCase {
         let identity = try XCTUnwrap(TTYResolver().resolve(from: getpid()))
         XCTAssertEqual(identity.sessionPid, claudePid,
                        "the walk should land on the same process Claude Code advertises")
-        XCTAssertGreaterThanOrEqual(identity.claudeAncestors, 1)
+        XCTAssertGreaterThanOrEqual(identity.agentAncestors, 1)
     }
 
     func testLiveProcessTableReportsSelfWithoutATTY() {

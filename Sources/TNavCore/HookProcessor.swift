@@ -1,69 +1,39 @@
 import Foundation
 
-/// Claude Code hook payload. Field names verified against live payloads in Phase 0 —
-/// see docs/phase0-recon-findings.md for the full observed shapes.
-public struct HookPayload: Decodable, Sendable {
-    public let sessionId: String
-    public let cwd: String
-    public let hookEventName: String
-    public let transcriptPath: String?
-    public let message: String?
-    public let notificationType: String?
-    public let lastAssistantMessage: String?
-
-    public static func decode(_ data: Data) throws -> HookPayload {
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return try decoder.decode(HookPayload.self, from: data)
-    }
-}
-
-public enum HookEventKind: String, Sendable {
-    case sessionStart = "SessionStart"
-    case userPromptSubmit = "UserPromptSubmit"
-    case preToolUse = "PreToolUse"
-    case stop = "Stop"
-    case notification = "Notification"
-    case sessionEnd = "SessionEnd"
-}
-
 public enum HookOutcome: Equatable, Sendable {
     case updated(SessionRecord)
-    case removed(sessionId: String)
+    case removed(agent: AgentKind, sessionId: String)
     case ignoredNested
     case ignoredUnknownEvent(String)
 }
 
 /// Pure state transitions, kept free of disk and AppleScript so the interesting behaviour
-/// (what preserves `since`, what re-arms a notification) is unit-testable.
+/// (what preserves `since`, what re-arms a notification) is unit-testable. Knows nothing about
+/// any particular agent: the adapters have already translated the payload into `AgentEvent`.
 public enum HookProcessor {
-    /// The one notification type observed in recon. Anything else is treated as urgent
-    /// rather than guessed at.
-    public static let idlePromptType = "idle_prompt"
-
-    public static func waitReason(forNotificationType type: String?) -> WaitReason {
-        type == idlePromptType ? .idlePrompt : .permission
-    }
-
-    public static func apply(payload: HookPayload,
+    public static func apply(agent: AgentKind,
+                             hook: DecodedHook,
                              identity: SessionIdentity,
                              existing: SessionRecord?,
                              now: Double) -> HookOutcome {
         guard !identity.isNested else { return .ignoredNested }
-        guard let kind = HookEventKind(rawValue: payload.hookEventName) else {
-            return .ignoredUnknownEvent(payload.hookEventName)
-        }
+        guard let event = hook.event else { return .ignoredUnknownEvent(hook.rawEventName) }
 
-        switch kind {
+        // A payload that states the model wins; otherwise keep whatever an earlier event said.
+        let model = hook.model ?? existing?.model
+
+        switch event {
         case .sessionEnd:
-            return .removed(sessionId: payload.sessionId)
+            return .removed(agent: agent, sessionId: hook.sessionId)
 
-        case .sessionStart, .userPromptSubmit:
+        case .sessionStart, .promptSubmitted:
             // The user just acted, so any pending alert is answered by definition.
-            return .updated(SessionRecord(sessionId: payload.sessionId,
+            return .updated(SessionRecord(sessionId: hook.sessionId,
+                                          agent: agent,
+                                          model: model,
                                           tty: identity.tty,
                                           pid: identity.sessionPid,
-                                          cwd: payload.cwd,
+                                          cwd: hook.cwd,
                                           state: .working,
                                           reason: nil,
                                           since: now,
@@ -71,17 +41,19 @@ public enum HookProcessor {
                                           escalated: false,
                                           lastAssistantMessage: nil))
 
-        case .preToolUse:
+        case .toolStarting:
             // The only signal that exists for "the user answered the permission prompt":
             // approving one fires no hook of its own, but the approved tool starts executing
             // immediately, and that is observable. It also fires on every tool call mid-turn,
             // so an already-working session keeps its original work start — the clock must
             // not restart per tool.
             let since = existing?.state == .working ? (existing?.since ?? now) : now
-            return .updated(SessionRecord(sessionId: payload.sessionId,
+            return .updated(SessionRecord(sessionId: hook.sessionId,
+                                          agent: agent,
+                                          model: model,
                                           tty: identity.tty,
                                           pid: identity.sessionPid,
-                                          cwd: payload.cwd,
+                                          cwd: hook.cwd,
                                           state: .working,
                                           reason: nil,
                                           since: since,
@@ -89,10 +61,15 @@ public enum HookProcessor {
                                           escalated: false,
                                           lastAssistantMessage: nil))
 
-        case .stop, .notification:
-            let reason: WaitReason = kind == .stop
-                ? .turnComplete
-                : waitReason(forNotificationType: payload.notificationType)
+        case .turnComplete, .idlePrompt, .needsPermission:
+            let reason: WaitReason
+            let message: String?
+            switch event {
+            case .turnComplete(let last): reason = .turnComplete; message = last
+            case .idlePrompt: reason = .idlePrompt; message = nil
+            case .needsPermission(let text): reason = .permission; message = text
+            default: fatalError("unreachable")
+            }
 
             let wasWaiting = existing?.state == .waiting
 
@@ -107,27 +84,27 @@ public enum HookProcessor {
             let reasonChanged = !wasWaiting || existing?.reason != reason
             let reasonSince = reasonChanged ? now : (existing?.reasonSince ?? since)
 
-            // Re-arm notification when urgency climbs: a soft "finished" ping followed 60s
-            // later by an urgent idle_prompt should sound again, at the higher tier.
+            // Re-arm notification when urgency climbs: a soft "finished" ping followed by a
+            // permission request should sound again, at the higher tier.
             let urgencyClimbed = wasWaiting
                 && existing?.urgency == .normal
                 && reason.urgency == .urgent
             let notified = wasWaiting && !urgencyClimbed ? (existing?.notified ?? false) : false
             let escalated = wasWaiting && !urgencyClimbed ? (existing?.escalated ?? false) : false
 
-            let message = payload.lastAssistantMessage ?? existing?.lastAssistantMessage
-
-            return .updated(SessionRecord(sessionId: payload.sessionId,
+            return .updated(SessionRecord(sessionId: hook.sessionId,
+                                          agent: agent,
+                                          model: model,
                                           tty: identity.tty,
                                           pid: identity.sessionPid,
-                                          cwd: payload.cwd,
+                                          cwd: hook.cwd,
                                           state: .waiting,
                                           reason: reason,
                                           since: since,
                                           reasonSince: reasonSince,
                                           notified: notified,
                                           escalated: escalated,
-                                          lastAssistantMessage: message))
+                                          lastAssistantMessage: message ?? existing?.lastAssistantMessage))
         }
     }
 }
