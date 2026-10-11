@@ -64,12 +64,10 @@ one adapter in `Sources/TNavCore/Agents/` plus one registrar in `scripts/hooks/`
 ## Install
 
 ```sh
-git clone https://github.com/AyeKarimba/ClaudeBar.git
-cd ClaudeBar
+git clone https://github.com/AyeKarimba/AgentSentinel.git
+cd AgentSentinel
 make install
 ```
-
-(The repository keeps its old name on GitHub for now.)
 
 That's it. It builds `AgentSentinel.app`, installs it to `/Applications`, registers the
 hooks for every agent it finds, starts it at login, and launches it. The `>_` icon appears in your menu bar.
