@@ -24,6 +24,11 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cp "$BIN/ClaudeBarApp" "$APP/Contents/MacOS/ClaudeBar"
 cp "$BIN/tnav"                 "$APP/Contents/MacOS/tnav"
+# The registrar rides along so Diagnostics can register an agent installed after `make install`.
+mkdir -p "$APP/Contents/Resources/hooks"
+cp "$ROOT/scripts/register-hooks.py" "$APP/Contents/Resources/register-hooks.py"
+cp "$ROOT"/scripts/hooks/*.py "$APP/Contents/Resources/hooks/"
+rm -f "$APP/Contents/Resources/hooks/test_registrars.py"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

@@ -58,8 +58,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             controller?.render()
         }
 
-        if !Diagnostics.hooksRegistered {
-            EventLog.append("app: launched but Claude Code hooks are not registered")
+        if !Diagnostics.anyHooksRegistered {
+            EventLog.append("app: launched but no agent has hooks registered")
         }
 
         // Stated at every launch because the downgrade is invisible from the outside: without
