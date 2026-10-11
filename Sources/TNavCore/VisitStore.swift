@@ -71,7 +71,7 @@ public enum RowTint: String, Equatable, Sendable {
     /// Waiting, already opened, still unanswered — the row that is genuinely just sitting
     /// there. The only case that reads as grey.
     case settled
-    /// Claude is running in this tab. Not a demand on the user, but not idle either, so it
+    /// An agent is running in this tab. Not a demand on the user, but not idle either, so it
     /// gets its own colour rather than being lumped in with the rows that want nothing.
     case working
     /// An unread turn completion.

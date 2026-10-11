@@ -132,10 +132,10 @@ public struct SessionRecord: Codable, Equatable, Sendable {
 
     public func elapsed(now: Double) -> Double { max(0, now - since) }
 
-    /// "MacTerminalNavigator — needs permission · 12s"
+    /// "MacTerminalNavigator (Codex) — needs permission · 12s"
     public func summary(now: Double) -> String {
         let detail = reason?.label ?? "working"
-        return "\(project) — \(detail) · \(Elapsed.short(elapsed(now: now)))"
+        return "\(project) (\(agent.displayName)) — \(detail) · \(Elapsed.short(elapsed(now: now)))"
     }
 
     /// Key used for tab-scoped mute: survives restarting Claude in the same tab and

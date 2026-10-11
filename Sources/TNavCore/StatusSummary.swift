@@ -11,7 +11,7 @@ public struct StatusSummary: Equatable, Sendable {
     /// than merely quiet — which is what makes purple worth having: sessions are running, and
     /// none of them wants anything from you.
     public enum Tint: String, Equatable, Sendable {
-        /// No Claude sessions at all.
+        /// No agent sessions at all.
         case idle
         /// Sessions are running, and nothing is waiting on the user.
         case working
@@ -41,7 +41,7 @@ public struct StatusSummary: Equatable, Sendable {
     /// Waiting sessions the user has already opened. They stay in the menu; they have just
     /// stopped asking for anything.
     public let attendedWaitingCount: Int
-    /// Sessions Claude is actively working in. Purple's version of the badge number.
+    /// Sessions an agent is actively working in. Purple's version of the badge number.
     public let workingCount: Int
     /// Blocking requests the user has not yet been present for, anywhere.
     public let unseenUrgentCount: Int
@@ -115,9 +115,9 @@ public struct StatusSummary: Equatable, Sendable {
         var parts: [String] = []
         if needsAttentionCount > 0, let oldestWait {
             let verb = needsAttentionCount == 1 ? "session needs" : "sessions need"
-            parts.append("\(needsAttentionCount) Claude \(verb) you, longest \(Elapsed.short(oldestWait))")
+            parts.append("\(needsAttentionCount) agent \(verb) you, longest \(Elapsed.short(oldestWait))")
         } else {
-            parts.append("No Claude sessions need you")
+            parts.append("No agent sessions need you")
         }
         if attendedWaitingCount > 0 {
             parts.append("\(attendedWaitingCount) already opened")

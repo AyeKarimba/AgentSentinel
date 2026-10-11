@@ -177,7 +177,7 @@ final class AlertPolicyTests: XCTestCase {
 
     func testSummaryReadsAsSpecified() {
         let target = record(reason: .permission, since: 1000)
-        XCTAssertEqual(target.summary(now: 1012), "proj — needs permission · 12s")
+        XCTAssertEqual(target.summary(now: 1012), "proj (Claude Code) — needs permission · 12s")
     }
 
     func testElapsedFormatting() {

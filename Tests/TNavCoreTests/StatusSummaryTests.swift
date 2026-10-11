@@ -19,7 +19,7 @@ final class StatusSummaryTests: XCTestCase {
         XCTAssertEqual(summary.waitingCount, 0)
         XCTAssertNil(summary.badgeText)
         XCTAssertEqual(summary.tint, .idle)
-        XCTAssertEqual(summary.accessibilityDescription, "No Claude sessions need you")
+        XCTAssertEqual(summary.accessibilityDescription, "No agent sessions need you")
     }
 
     func testWorkingSessionsAreNotCountedAsWaiting() {
@@ -164,6 +164,6 @@ final class StatusSummaryTests: XCTestCase {
         let records = [record(id: "a", since: 953)]
         let summary = StatusSummary(records: records, config: Config(), now: 1000)
         XCTAssertEqual(summary.accessibilityDescription,
-                       "1 Claude session needs you, longest 47s")
+                       "1 agent session needs you, longest 47s")
     }
 }

@@ -99,14 +99,14 @@ private final class BannerView: NSView {
         self.action = action
 
         let accent = tint.color
-        let title = NSTextField(labelWithString: record.project)
+        let title = NSTextField(labelWithString: "\(record.project) (\(record.agent.displayName))")
         title.font = .systemFont(ofSize: titleSize, weight: .semibold)
         title.textColor = accent
         title.lineBreakMode = .byTruncatingTail
 
         // Carries the tint too: in a banner the reason is the point, not an aside, and it is
         // what makes red-versus-amber legible without reading a word. Name and reason are the
-        // whole banner — Claude's closing message stays in the menu row, where the user reads
+        // whole banner — the agent's closing message stays in the menu row, where the user reads
         // at their own pace rather than against a dismiss timer.
         let reason = NSTextField(labelWithString: record.reason?.label ?? "waiting")
         reason.font = .systemFont(ofSize: bodySize - 1, weight: .medium)

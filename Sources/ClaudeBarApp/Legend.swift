@@ -30,7 +30,7 @@ extension RowTint {
         case .urgent: return "Needs your permission — you haven't opened it yet"
         case .waiting: return "Finished its turn — you haven't opened it yet"
         case .settled: return "You've opened it; still waiting on your reply"
-        case .working: return "Claude is working in this tab"
+        case .working: return "An agent is working in this tab"
         }
     }
 }
@@ -190,12 +190,18 @@ enum Legend {
                             color: RowTint.urgent.color))
         menu.addItem(sample(">_", "1 · 2m", "A tab has finished and is waiting on you",
                             color: RowTint.waiting.color))
-        menu.addItem(sample(">_", "3", "Claude is working in 3 tabs; nothing wants you",
+        menu.addItem(sample(">_", "3", "Agents are working in 3 tabs; nothing wants you",
                             color: RowTint.working.color))
-        menu.addItem(sample(">_", "", "No Claude sessions at all",
+        menu.addItem(sample(">_", "", "No agent sessions at all",
                             color: .secondaryLabelColor))
         menu.addItem(sample("●", "", "Unopened request in a muted or snoozed tab",
                             color: RowTint.urgent.color))
+
+        menu.addItem(.separator())
+        menu.addItem(heading("The two letters after each project name"))
+        for kind in AgentKind.known {
+            menu.addItem(sample(kind.tag, "", kind.displayName, color: .secondaryLabelColor))
+        }
 
         menu.addItem(.separator())
         menu.addItem(heading("The buttons on each row"))

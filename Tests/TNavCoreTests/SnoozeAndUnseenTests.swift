@@ -153,7 +153,7 @@ final class SnoozeAndUnseenTests: XCTestCase {
         let config = Config(mutedTabs: [target.tabMuteKey])
         let summary = StatusSummary(records: [target], config: config, visits: [:], now: 1060)
         XCTAssertEqual(summary.accessibilityDescription,
-                       "No Claude sessions need you · 1 unopened request in a silenced tab · 1 silenced")
+                       "No agent sessions need you · 1 unopened request in a silenced tab · 1 silenced")
     }
 
     // MARK: - VisitStore

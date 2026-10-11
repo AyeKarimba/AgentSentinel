@@ -298,7 +298,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let working = monitor.records.filter { $0.state == .working }
 
         if monitor.records.isEmpty {
-            menu.addItem(disabled("No Claude sessions running"))
+            menu.addItem(disabled("No agent sessions running"))
         } else if waiting.isEmpty {
             menu.addItem(disabled("All caught up"))
         }
@@ -352,7 +352,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         settings.target = self
         menu.addItem(settings)
 
-        let messages = NSMenuItem(title: "Show Claude's last message",
+        let messages = NSMenuItem(title: "Show the agent's last message",
                                   action: #selector(toggleLastMessage),
                                   keyEquivalent: "")
         messages.target = self
