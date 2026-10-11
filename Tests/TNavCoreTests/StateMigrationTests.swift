@@ -66,4 +66,23 @@ final class StateMigrationTests: XCTestCase {
     func testLegacyRootIsTheOldClaudeDirectory() {
         XCTAssertTrue(Paths.legacyRoot.path.hasSuffix("/.claude/tnav"))
     }
+
+    func testRunOnceCopiesThenLeavesMarker() throws {
+        try write(old.appendingPathComponent("visits.json"), "{}")
+        XCTAssertEqual(StateMigration.runOnce(from: old, to: new), ["visits.json"])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: new.appendingPathComponent(".migrated").path))
+    }
+
+    func testRunOnceDoesNotResurrectDeletedFiles() throws {
+        try write(old.appendingPathComponent("visits.json"), "{}")
+        StateMigration.runOnce(from: old, to: new)
+        try FileManager.default.removeItem(at: new.appendingPathComponent("visits.json"))
+        XCTAssertEqual(StateMigration.runOnce(from: old, to: new), [])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: new.appendingPathComponent("visits.json").path))
+    }
+
+    func testRunOnceWritesMarkerEvenWithoutOldDirectory() {
+        XCTAssertEqual(StateMigration.runOnce(from: base.appendingPathComponent("nope"), to: new), [])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: new.appendingPathComponent(".migrated").path))
+    }
 }
