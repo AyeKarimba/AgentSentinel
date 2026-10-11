@@ -1,10 +1,8 @@
-# ClaudeBar
+# AgentSentinel
 
-A macOS menu bar app that tells you which Claude Code sessions are waiting on you, and takes
-you to the right terminal tab when you click one. An unofficial community tool, not
-affiliated with Anthropic. Formerly named TerminalNavigator.
+A macOS menu bar for your CLI coding agents (Claude Code, Codex, Gemini CLI, Copilot CLI): see who's waiting on you and jump to the right terminal tab. An unofficial community tool.
 
-Run Claude Code in six tabs and the hard part stops being the work — it's noticing that one of
+Run AI Workflows in six tabs and the hard part stops being the work — it's noticing that one of
 them has been sitting on a permission prompt for ten minutes while you watched a different one
 think. This puts that in the menu bar.
 
