@@ -32,7 +32,7 @@ enum JumpCommand {
                 let live = (try? controller.knownTTYs()) ?? []
                 if !live.isEmpty, !live.contains(target) {
                     for record in store.all() where record.tty == target {
-                        store.remove(record.sessionId)
+                        store.remove(record)
                     }
                 }
                 return 1

@@ -41,7 +41,7 @@ enum HookCommand {
         }
 
         let store = SessionStore()
-        let existing = store.load(payload.sessionId)
+        let existing = store.load(agent: .claude, sessionId: payload.sessionId)
         let outcome = HookProcessor.apply(payload: payload,
                                          identity: identity,
                                          existing: existing,
@@ -52,7 +52,7 @@ enum HookCommand {
             try store.save(record)
             logUnknownNotificationType(payload)
         case .removed(let sessionId):
-            store.remove(sessionId)
+            store.remove(agent: .claude, sessionId: sessionId)
         case .ignoredNested:
             // Nested `claude` resolves to its parent's tab; acting on it would raise a
             // phantom alert for a tab that is actually busy.
