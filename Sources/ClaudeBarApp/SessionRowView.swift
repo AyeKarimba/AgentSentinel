@@ -96,6 +96,10 @@ final class SessionRowView: NSView {
         // Claude at a glance, quiet enough that the project name stays the thing you read.
         agentLabel.font = .monospacedSystemFont(ofSize: 10, weight: .semibold)
         agentLabel.textColor = .secondaryLabelColor
+        // The tag keeps its width; a long project name truncates instead of squeezing it off.
+        agentLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        agentLabel.setContentHuggingPriority(.required, for: .horizontal)
+        projectLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         detailLabel.font = .systemFont(ofSize: 11)
         detailLabel.lineBreakMode = .byTruncatingTail
