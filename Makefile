@@ -1,4 +1,4 @@
-.PHONY: install uninstall app build test check run clean help
+.PHONY: install uninstall app build test test-scripts check run clean help
 
 help:
 	@echo "ClaudeBar"
@@ -7,6 +7,7 @@ help:
 	@echo "  make uninstall   remove the app, the login item and the hooks"
 	@echo "  make app         build ClaudeBar.app into ./build, without installing"
 	@echo "  make test        unit tests"
+	@echo "  make test-scripts  registrar tests (python)"
 	@echo "  make check       unit tests + the hook integration test"
 	@echo "  make run         run from source, without installing (development)"
 	@echo "  make clean       remove build artefacts"
@@ -31,7 +32,10 @@ build:
 test:
 	TNAV_STATE_DIR="$$(mktemp -d)" swift test
 
-check: test
+test-scripts:
+	python3 -m unittest discover -s scripts/hooks -t scripts
+
+check: test test-scripts
 	@./scripts/integration-test.sh
 
 # Development: run the menu bar app straight from .build. Note that macOS ties Accessibility
