@@ -70,9 +70,11 @@ ln -sfn "$APP" "$PREFIX/ClaudeBar.app"
 
 echo "==> Registering hooks"
 if [ -n "$AGENTS" ]; then
-    python3 "$ROOT/scripts/register-hooks.py" --tnav "$TNAV" --agents "$AGENTS" | sed 's/^/    /'
+    python3 "$ROOT/scripts/register-hooks.py" --tnav "$TNAV" --agents "$AGENTS" | sed 's/^/    /' \
+        || echo "    (a registrar refused a file — see above; fix it and re-run 'make install', or use Diagnostics… in the menu)"
 else
-    python3 "$ROOT/scripts/register-hooks.py" --tnav "$TNAV" | sed 's/^/    /'
+    python3 "$ROOT/scripts/register-hooks.py" --tnav "$TNAV" | sed 's/^/    /' \
+        || echo "    (a registrar refused a file — see above; fix it and re-run 'make install', or use Diagnostics… in the menu)"
 fi
 
 if [ "$LOGIN_ITEM" = "1" ]; then

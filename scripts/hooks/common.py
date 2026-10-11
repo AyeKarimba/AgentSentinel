@@ -21,17 +21,25 @@ def is_ours(command):
     return any(marker in text for marker in OURS_MARKERS)
 
 
-def read_json(path):
+def read_json(path, snippet=None):
     """The parsed object, or None when the file does not exist. Raises RegistrarError rather
     than returning a default for a file that exists but cannot be parsed: replacing it would
-    lose every other tool's configuration."""
+    lose every other tool's configuration. `snippet`, when given, is the JSON text to offer
+    for pasting by hand (some agents' settings files allow comments, which json cannot read)."""
     if not os.path.exists(path):
         return None
     try:
         with open(path) as handle:
             data = json.load(handle)
     except (json.JSONDecodeError, OSError) as error:
-        raise RegistrarError(f"could not read {path}: {error}; leaving it untouched — fix it and re-run")
+        message = (f"could not read {path}: {error}; leaving it untouched. The file may contain "
+                   "comments or trailing commas, which this tool does not parse.")
+        if snippet:
+            message += (" Add the hooks by hand, or remove the comments and re-run. "
+                        f"Paste this into {path}:\n{snippet}")
+        else:
+            message += " Fix it and re-run."
+        raise RegistrarError(message)
     if not isinstance(data, dict):
         raise RegistrarError(f"{path} is not a JSON object; leaving it untouched")
     return data
@@ -134,11 +142,13 @@ def grouped_registrar(kind, config_rel, root_key, events, required_events, legac
 
     def register(home, tnav, extra=None):
         path = config_path(home)
-        data = read_json(path) or {}
+        command = f"{os.path.abspath(tnav)} hook --agent {kind}"
+        snippet = json.dumps({root_key: merge_grouped({}, events, command, extra)}, indent=2)
+        data = read_json(path, snippet) or {}
         hooks = data.get(root_key) or {}
         if not isinstance(hooks, dict):
             raise RegistrarError(f"'{root_key}' in {path} is not an object; leaving it untouched")
-        merge_grouped(hooks, events, f"{os.path.abspath(tnav)} hook --agent {kind}", extra)
+        merge_grouped(hooks, events, command, extra)
         data[root_key] = hooks
         write_json_atomic(path, data)
         return f"registered {len(events)} {kind} hooks in {path}"

@@ -68,13 +68,15 @@ def main(argv):
         print("no supported agent found (looked for ~/.claude ~/.codex ~/.gemini ~/.copilot)")
         return 0
     code = 0
+    registered = set()
     for kind in kinds:
         try:
             print(AGENTS[kind].register(home, tnav))
+            registered.add(kind)
         except RegistrarError as error:
             print(str(error), file=sys.stderr)
             code = 1
-    if "codex" in kinds:
+    if "codex" in registered:
         print("codex: hooks run only once trusted — start `codex`, type /hooks, and accept the"
               " AgentSentinel entries. An edited hook is skipped again until re-trusted.")
     return code

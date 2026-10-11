@@ -159,6 +159,20 @@ class GeminiTests(RegistrarCase):
         self.assertEqual(self.read(".gemini/settings.json")["theme"], "Default")
 
 
+    def test_commented_file_is_refused_with_a_paste_snippet(self):
+        os.makedirs(self.path(".gemini"))
+        full = self.path(".gemini", "settings.json")
+        original = b'{\n  // my theme\n  "theme": "Default"\n}\n'
+        with open(full, "wb") as handle:
+            handle.write(original)
+        with self.assertRaises(common.RegistrarError) as ctx:
+            gemini.register(self.home, TNAV)
+        self.assertIn("comments", str(ctx.exception))
+        self.assertIn("tnav hook --agent gemini", str(ctx.exception))
+        with open(full, "rb") as handle:
+            self.assertEqual(handle.read(), original)
+
+
 class CopilotTests(RegistrarCase):
     def test_writes_own_file_with_event_flag_per_event(self):
         os.makedirs(self.path(".copilot"))

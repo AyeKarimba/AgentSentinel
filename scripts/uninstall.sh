@@ -1,5 +1,5 @@
 #!/bin/bash
-# Remove AgentSentinel: the app, the login item, and its Claude Code hooks.
+# Remove AgentSentinel: the app, the login item, and the hooks from every agent.
 #
 # Leaves the state directory alone by default — it is small, and keeping it means a reinstall
 # remembers your mutes and snoozes. Pass --purge to delete that too.
@@ -46,7 +46,7 @@ python3 "$ROOT/scripts/register-hooks.py" --remove | sed 's/^/    /'
 
 for prefix in /Applications "$HOME/Applications"; do
     for app in AgentSentinel.app ClaudeBar.app TerminalNavigator.app; do
-        if [ -e "$prefix/$app" ]; then
+        if [ -e "$prefix/$app" ] || [ -L "$prefix/$app" ]; then
             echo "==> Removing $prefix/$app"
             rm -rf "$prefix/$app"
         fi
