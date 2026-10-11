@@ -20,7 +20,7 @@ while [ $# -gt 0 ]; do
         -h|--help)
             echo "usage: uninstall.sh [--purge]"
             echo
-            echo "  Removes the app, the login item and the Claude Code hooks."
+            echo "  Removes the app, the login item and the hooks from every agent."
             echo "  --purge  also delete ~/.claude/tnav (settings and session state)"
             exit 0 ;;
         *) echo "unknown option: $1" >&2; echo "try --help" >&2; exit 2 ;;
@@ -39,7 +39,7 @@ for agent in "$AGENT" "$OLD_AGENT"; do
     fi
 done
 
-echo "==> Removing Claude Code hooks"
+echo "==> Removing hooks from every agent"
 python3 "$ROOT/scripts/register-hooks.py" --remove | sed 's/^/    /'
 
 for prefix in /Applications "$HOME/Applications"; do

@@ -4,17 +4,20 @@
 #   ./scripts/install.sh                 install to /Applications and start at login
 #   ./scripts/install.sh --no-login      do not start it at login
 #   ./scripts/install.sh --prefix ~/Applications
+#   ./scripts/install.sh --agents claude,codex   register hooks for these agents only
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PREFIX="/Applications"
 LOGIN_ITEM=1
+AGENTS=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
         --no-login) LOGIN_ITEM=0; shift ;;
         --prefix)   PREFIX="${2%/}"; shift 2 ;;
-        -h|--help)  sed -n '2,7p' "$0"; exit 0 ;;
+        --agents)   AGENTS="$2"; shift 2 ;;
+        -h|--help)  sed -n '2,8p' "$0"; exit 0 ;;
         *) echo "unknown option: $1" >&2; exit 2 ;;
     esac
 done
@@ -53,8 +56,12 @@ fi
 
 ln -sfn "$APP" "$PREFIX/TerminalNavigator.app"
 
-echo "==> Registering Claude Code hooks"
-python3 "$ROOT/scripts/register-hooks.py" "$TNAV" | sed 's/^/    /'
+echo "==> Registering hooks"
+if [ -n "$AGENTS" ]; then
+    python3 "$ROOT/scripts/register-hooks.py" --tnav "$TNAV" --agents "$AGENTS" | sed 's/^/    /'
+else
+    python3 "$ROOT/scripts/register-hooks.py" --tnav "$TNAV" | sed 's/^/    /'
+fi
 
 if [ "$LOGIN_ITEM" = "1" ]; then
     echo "==> Starting at login"
@@ -89,7 +96,8 @@ echo "  • Automation — to ask Terminal which tab a session is in. Required."
 echo "  • Accessibility — to reach tabs on other desktops. Optional; without it"
 echo "    only tabs on your current desktop can be jumped to."
 echo
-echo "Already-running Claude Code sessions won't appear until their next event"
-echo "(send a message in one, and it shows up). New sessions appear immediately."
+echo "Hooks were registered for every agent found on this machine (Claude Code, Codex,"
+echo "Gemini CLI, Copilot CLI). Install another later and open Diagnostics… from the menu"
+echo "to register it. Sessions already running appear at their next event."
 echo
 echo "To remove it all again:  ./scripts/uninstall.sh"
