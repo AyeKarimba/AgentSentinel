@@ -29,11 +29,11 @@ public struct SessionIdentity: Equatable, Sendable {
 
 public struct TTYResolver: Sendable {
     private let table: ProcessTable
-    private let matcher: ClaudeMatcher
+    private let matcher: AgentMatcher
     private let maxDepth: Int
 
     public init(table: ProcessTable = SysctlProcessTable(),
-                matcher: ClaudeMatcher = ClaudeMatcher(),
+                matcher: AgentMatcher = AgentMatcher(),
                 maxDepth: Int = 24) {
         self.table = table
         self.matcher = matcher
@@ -41,10 +41,10 @@ public struct TTYResolver: Sendable {
     }
 
     /// Walks the ancestry from `startPid` toward the process-tree root, recording the first
-    /// controlling TTY found and counting `claude` ancestors on the way.
+    /// controlling TTY found and counting known-agent ancestors on the way.
     ///
     /// The walk continues past the first TTY rather than stopping there — counting *all*
-    /// `claude` ancestors is what makes nested-session detection possible.
+    /// agent ancestors is what makes nested-session detection possible.
     public func resolve(from startPid: Int32) -> SessionIdentity? {
         var pid = startPid
         var depth = 0
@@ -53,16 +53,19 @@ public struct TTYResolver: Sendable {
         var tty = ""
         var firstTTYPid: Int32 = 0
         var nearestAgentPid: Int32 = 0
-        var nearestKind: AgentKind? = nil
+        var nearestKind: AgentKind?
         var agentCount = 0
 
         while pid > 1, depth < maxDepth, !visited.contains(pid) {
             visited.insert(pid)
             guard let row = table.row(for: pid) else { break }
 
-            if matcher.matches(row) {
+            if let kind = matcher.match(row) {
                 agentCount += 1
-                if nearestAgentPid == 0 { nearestAgentPid = row.pid; nearestKind = .claude }
+                if nearestAgentPid == 0 {
+                    nearestAgentPid = row.pid
+                    nearestKind = kind
+                }
             }
             if tty.isEmpty, !row.tty.isEmpty {
                 tty = row.tty
@@ -75,9 +78,10 @@ public struct TTYResolver: Sendable {
 
         guard !tty.isEmpty else { return nil }
 
-        // Prefer the claude process for liveness checks; fall back to whichever process
-        // owns the TTY if claude wasn't recognisable (e.g. launched via a wrapper).
+        // Prefer the agent process for liveness checks; fall back to whichever process owns
+        // the TTY if the agent wasn't recognisable (e.g. launched via a wrapper).
         let sessionPid = nearestAgentPid != 0 ? nearestAgentPid : firstTTYPid
-        return SessionIdentity(tty: tty, sessionPid: sessionPid, agentAncestors: agentCount, nearestAgent: nearestKind)
+        return SessionIdentity(tty: tty, sessionPid: sessionPid,
+                               agentAncestors: agentCount, nearestAgent: nearestKind)
     }
 }

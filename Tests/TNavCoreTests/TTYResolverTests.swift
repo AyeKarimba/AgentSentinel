@@ -109,10 +109,11 @@ final class TTYResolverTests: XCTestCase {
             ProcessRow(pid: 800, ppid: 1, tty: "/dev/ttys003", command: "2.1.220",
                        argv0: "node", executablePath: execPath),
         ])
-        let matcher = ClaudeMatcher(referenceExecutablePath: execPath)
+        let matcher = AgentMatcher(referenceExecutablePaths: [.claude: execPath])
         let identity = TTYResolver(table: chain, matcher: matcher).resolve(from: 900)
         XCTAssertEqual(identity?.agentAncestors, 1)
         XCTAssertEqual(identity?.sessionPid, 800)
+        XCTAssertEqual(identity?.nearestAgent, .claude)
     }
 
     func testDetectsNestingWhenBothClaudesAreVersionNamed() {
@@ -132,29 +133,101 @@ final class TTYResolverTests: XCTestCase {
     }
 
     func testMatcherDoesNotFalsePositiveOnUnrelatedProcesses() {
-        let matcher = ClaudeMatcher(referenceExecutablePath: "/opt/claude/versions/9")
+        let matcher = AgentMatcher(referenceExecutablePaths: [.claude: "/opt/claude/versions/9"])
         let unrelated = ProcessRow(pid: 1, ppid: 0, tty: "", command: "zsh",
                                    argv0: "-zsh", executablePath: "/bin/zsh")
-        XCTAssertFalse(matcher.matches(unrelated))
+        XCTAssertNil(matcher.match(unrelated))
         let claudeLike = ProcessRow(pid: 2, ppid: 1, tty: "", command: "node",
                                     argv0: "/usr/local/bin/claude", executablePath: "/usr/local/bin/node")
-        XCTAssertTrue(matcher.matches(claudeLike), "argv0 basename should match through a full path")
+        XCTAssertEqual(matcher.match(claudeLike), .claude, "argv0 basename should match through a full path")
+    }
+
+    // MARK: - Other agents
+
+    /// The real chain from the Codex probe (2026-10-10): codex → bash → tnav.
+    func testIdentifiesCodexByArgv0() {
+        let chain = StubProcessTable([
+            ProcessRow(pid: 20412, ppid: 20407, tty: "", command: "tnav", argv0: "tnav"),
+            ProcessRow(pid: 20407, ppid: 20108, tty: "", command: "bash", argv0: "bash"),
+            ProcessRow(pid: 20108, ppid: 19663, tty: "/dev/ttys005", command: "codex", argv0: "codex",
+                       executablePath: "/Users/you/.codex/packages/standalone/current/bin/codex"),
+            ProcessRow(pid: 19663, ppid: 19661, tty: "/dev/ttys005", command: "zsh", argv0: "-zsh"),
+        ])
+        let identity = TTYResolver(table: chain).resolve(from: 20412)
+        XCTAssertEqual(identity?.tty, "/dev/ttys005")
+        XCTAssertEqual(identity?.sessionPid, 20108)
+        XCTAssertEqual(identity?.nearestAgent, .codex)
+        XCTAssertEqual(identity?.isNested, false)
+    }
+
+    func testIdentifiesNodeBasedGeminiByScriptPath() {
+        // `gemini` is a Node program: argv0 is node, the script is .../@google/gemini-cli/dist/index.js.
+        // The basename is index.js, which says nothing — the package directory is the signal.
+        let row = ProcessRow(pid: 5, ppid: 4, tty: "/dev/ttys001", command: "node", argv0: "node",
+                             argv1: "/opt/homebrew/lib/node_modules/@google/gemini-cli/dist/index.js",
+                             executablePath: "/opt/homebrew/bin/node")
+        XCTAssertEqual(AgentMatcher(referenceExecutablePaths: [:]).match(row), .gemini)
+    }
+
+    func testIdentifiesNodeBasedCopilotByScriptPath() {
+        let row = ProcessRow(pid: 5, ppid: 4, tty: "/dev/ttys001", command: "node", argv0: "/usr/local/bin/node",
+                             argv1: "/usr/local/lib/node_modules/@github/copilot/index.js",
+                             executablePath: "/usr/local/bin/node")
+        XCTAssertEqual(AgentMatcher(referenceExecutablePaths: [:]).match(row), .copilot)
+    }
+
+    func testWrapperBinaryNamedAfterTheAgentMatches() {
+        // Homebrew-style shim: argv0 is "gemini" even though node runs underneath.
+        let row = ProcessRow(pid: 5, ppid: 4, tty: "/dev/ttys001", command: "node", argv0: "gemini",
+                             argv1: "--model", executablePath: "/opt/homebrew/bin/node")
+        XCTAssertEqual(AgentMatcher(referenceExecutablePaths: [:]).match(row), .gemini)
+    }
+
+    func testUnrelatedNodeScriptIsNotAnAgent() {
+        // Every Node dev server would otherwise count as an agent ancestor.
+        let row = ProcessRow(pid: 5, ppid: 4, tty: "/dev/ttys001", command: "node", argv0: "node",
+                             argv1: "/Users/you/app/server.js", executablePath: "/usr/local/bin/node")
+        XCTAssertNil(AgentMatcher(referenceExecutablePaths: [:]).match(row))
+    }
+
+    func testCodexUnderClaudeIsNested() {
+        // Claude's Bash tool runs `codex exec …`; Codex's hook then fires. Two agent ancestors
+        // of different kinds — still nested, still the parent's tab.
+        let chain = StubProcessTable([
+            ProcessRow(pid: 60, ppid: 50, tty: "", command: "tnav", argv0: "tnav"),
+            ProcessRow(pid: 50, ppid: 40, tty: "", command: "bash", argv0: "bash"),
+            ProcessRow(pid: 40, ppid: 30, tty: "", command: "codex", argv0: "codex"),
+            ProcessRow(pid: 30, ppid: 20, tty: "", command: "zsh", argv0: "zsh"),
+            ProcessRow(pid: 20, ppid: 10, tty: "/dev/ttys003", command: "2.1.220", argv0: "claude"),
+            ProcessRow(pid: 10, ppid: 1, tty: "/dev/ttys003", command: "zsh", argv0: "-zsh"),
+        ])
+        let identity = TTYResolver(table: chain).resolve(from: 60)
+        XCTAssertEqual(identity?.agentAncestors, 2)
+        XCTAssertEqual(identity?.isNested, true)
+        XCTAssertEqual(identity?.nearestAgent, .codex, "nearest is the one that fired the hook")
     }
 
     // MARK: - Live process table
 
     func testLiveProcessTableIdentifiesTheRealClaudeProcess() throws {
-        // Guards the exact regression this replaced: matching on p_comm silently failed
-        // because the binary is named after the version.
         let environment = ProcessInfo.processInfo.environment
         guard let claudePid = environment["CLAUDE_PID"].flatMap(Int32.init) else {
             throw XCTSkip("not running under Claude Code")
         }
         let row = try XCTUnwrap(SysctlProcessTable().row(for: claudePid))
         XCTAssertEqual(row.argv0Basename, "claude")
-        XCTAssertTrue(ClaudeMatcher(environment: environment).matches(row),
-                      "p_comm was '\(row.command)'; matcher must still identify it")
+        XCTAssertEqual(AgentMatcher(environment: environment).match(row), .claude,
+                       "p_comm was '\(row.command)'; matcher must still identify it")
         XCTAssertFalse(row.tty.isEmpty, "the session process owns the tab's tty")
+    }
+
+    func testLiveProcessTableReadsArgv1() {
+        // This test binary is launched as `xctest <bundle path>`; the second argument is a path.
+        let row = SysctlProcessTable().row(for: getpid())
+        XCTAssertNotNil(row)
+        // argv1 may legitimately be empty for some runners; what matters is that reading it
+        // neither crashes nor returns garbage past the NUL.
+        XCTAssertFalse(row?.argv1.contains("\0") ?? true)
     }
 
     func testLiveResolutionAgreesWithClaudePidAndIsNotNested() throws {
@@ -166,6 +239,7 @@ final class TTYResolverTests: XCTestCase {
         XCTAssertEqual(identity.sessionPid, claudePid,
                        "the walk should land on the same process Claude Code advertises")
         XCTAssertGreaterThanOrEqual(identity.agentAncestors, 1)
+        XCTAssertEqual(identity.nearestAgent, .claude)
     }
 
     func testLiveProcessTableReportsSelfWithoutATTY() {

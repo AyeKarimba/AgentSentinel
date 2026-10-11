@@ -8,16 +8,17 @@ enum ResolveCommand {
     static func run() -> Int32 {
         let table = SysctlProcessTable()
 
-        let matcher = ClaudeMatcher()
+        let matcher = AgentMatcher()
         print("ancestry (self → root):    [p_comm is unreliable; argv0 is the real signal]")
-        print("  \(pad("pid", 7))\(pad("ppid", 7))\(pad("tty", 13))\(pad("p_comm", 12))\(pad("argv0", 10))claude?")
+        print("  \(pad("pid", 7))\(pad("ppid", 7))\(pad("tty", 13))\(pad("p_comm", 12))\(pad("argv0", 10))\(pad("argv1", 30))agent")
         var pid = getpid()
         var depth = 0
         while pid > 1, depth < 24, let row = table.row(for: pid) {
             let tty = row.tty.isEmpty ? "-" : row.tty
             print("  \(pad(String(row.pid), 7))\(pad(String(row.ppid), 7))\(pad(tty, 13))"
                   + "\(pad(row.command, 12))\(pad(row.argv0Basename, 10))"
-                  + (matcher.matches(row) ? "yes" : ""))
+                  + "\(pad(String(row.argv1.suffix(28)), 30))"
+                  + (matcher.match(row)?.rawValue ?? ""))
             pid = row.ppid
             depth += 1
         }
