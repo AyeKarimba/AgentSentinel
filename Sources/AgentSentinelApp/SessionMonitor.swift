@@ -100,7 +100,7 @@ final class SessionMonitor {
     /// Sorts by the colour hierarchy the legend describes and hands the result to the UI.
     ///
     /// Red (unread blocking request) first, then amber (unread turn completion), then grey
-    /// (opened but still unanswered), then purple (Claude still working) — so the rows that
+    /// (opened but still unanswered), then purple (an agent still working) — so the rows that
     /// want something are always above the rows that do not.
     ///
     /// Within one colour, silenced tabs sink: muting is a request to stop competing for
@@ -178,7 +178,7 @@ final class SessionMonitor {
     /// remove, and the case that had no remedy at all before.
     func forget(_ record: SessionRecord) {
         EventLog.append("forget: \(record.project) (\(record.tty), \(record.sessionId)) dismissed by hand")
-        store.remove(record.sessionId)
+        store.remove(record)
         reload()
     }
 

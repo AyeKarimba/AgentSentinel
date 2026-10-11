@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var alerter: Alerter?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        StateMigration.runIfNeeded()
         NSApp.setActivationPolicy(.accessory)
 
         let controller = StatusItemController(monitor: monitor)
@@ -58,8 +59,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             controller?.render()
         }
 
-        if !Diagnostics.hooksRegistered {
-            EventLog.append("app: launched but Claude Code hooks are not registered")
+        if !Diagnostics.anyHooksRegistered {
+            EventLog.append("app: launched but no agent has hooks registered")
         }
 
         // Stated at every launch because the downgrade is invisible from the outside: without

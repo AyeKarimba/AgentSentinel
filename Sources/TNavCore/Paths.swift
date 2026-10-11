@@ -17,9 +17,14 @@ public enum Paths {
                        isDirectory: true)
         }
         return FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude", isDirectory: true)
-            .appendingPathComponent("tnav", isDirectory: true)
+            .appendingPathComponent("Library/Application Support", isDirectory: true)
+            .appendingPathComponent("AgentSentinel", isDirectory: true)
     }()
+
+    /// Where the 1.0.x builds kept state. Only `StateMigration` and the uninstaller care.
+    public static let legacyRoot: URL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".claude", isDirectory: true)
+        .appendingPathComponent("tnav", isDirectory: true)
 
     public static let sessions: URL = root.appendingPathComponent("sessions", isDirectory: true)
     public static let configFile: URL = root.appendingPathComponent("config.json")

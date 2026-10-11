@@ -29,31 +29,65 @@ public final class SessionStore {
         return sessionId
     }
 
-    public func url(for sessionId: String) -> URL? {
+    /// Sanitised filename stem for a record, or nil when the id is not safe as a filename.
+    static func stem(agent: AgentKind, sessionId: String) -> String? {
+        guard let safe = sanitize(sessionId), sanitize(agent.rawValue) != nil else { return nil }
+        return "\(agent.rawValue)-\(safe)"
+    }
+
+    public func url(agent: AgentKind, sessionId: String) -> URL? {
+        guard let stem = Self.stem(agent: agent, sessionId: sessionId) else { return nil }
+        return directory.appendingPathComponent("\(stem).json")
+    }
+
+    /// Where the 1.0.x build kept the same record: a bare `<sessionId>.json`. Only Claude
+    /// sessions ever lived there.
+    func legacyURL(sessionId: String) -> URL? {
         guard let safe = Self.sanitize(sessionId) else { return nil }
         return directory.appendingPathComponent("\(safe).json")
     }
 
-    public func load(_ sessionId: String) -> SessionRecord? {
-        guard let url = url(for: sessionId), let data = try? Data(contentsOf: url) else { return nil }
-        return try? JSONDecoder().decode(SessionRecord.self, from: data)
+    public func load(agent: AgentKind, sessionId: String) -> SessionRecord? {
+        if let url = url(agent: agent, sessionId: sessionId),
+           let data = try? Data(contentsOf: url),
+           let record = try? JSONDecoder().decode(SessionRecord.self, from: data) {
+            return record
+        }
+        guard agent == .claude,
+              let legacy = legacyURL(sessionId: sessionId),
+              let data = try? Data(contentsOf: legacy),
+              let record = try? JSONDecoder().decode(SessionRecord.self, from: data)
+        else { return nil }
+        return record
     }
 
     /// Atomic: `.atomic` writes a temp file and renames, so a concurrent reader in the app
-    /// never observes a partially written record.
+    /// never observes a partially written record. Also retires the pre-1.1 bare filename for
+    /// the same session, so an upgraded install does not list it twice.
     public func save(_ record: SessionRecord) throws {
-        guard let url = url(for: record.sessionId) else {
+        guard let url = url(agent: record.agent, sessionId: record.sessionId) else {
             throw StoreError.invalidSessionId(record.sessionId)
         }
         try ensureDirectory()
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try encoder.encode(record).write(to: url, options: .atomic)
+        if record.agent == .claude, let legacy = legacyURL(sessionId: record.sessionId) {
+            try? fileManager.removeItem(at: legacy)
+        }
     }
 
-    public func remove(_ sessionId: String) {
-        guard let url = url(for: sessionId) else { return }
-        try? fileManager.removeItem(at: url)
+    public func remove(agent: AgentKind, sessionId: String) {
+        if let url = url(agent: agent, sessionId: sessionId) {
+            try? fileManager.removeItem(at: url)
+        }
+        if agent == .claude, let legacy = legacyURL(sessionId: sessionId) {
+            try? fileManager.removeItem(at: legacy)
+        }
+    }
+
+    public func remove(_ record: SessionRecord) {
+        remove(agent: record.agent, sessionId: record.sessionId)
     }
 
     public func all() -> [SessionRecord] {
@@ -94,7 +128,7 @@ public final class SessionStore {
             if isAlive(record) {
                 alive.append(record)
             } else {
-                remove(record.sessionId)
+                remove(record)
             }
         }
         return alive

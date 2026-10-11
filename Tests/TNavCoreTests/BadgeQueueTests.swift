@@ -139,7 +139,7 @@ final class BadgeQueueTests: XCTestCase {
         let summary = StatusSummary(records: records, config: Config(), visits: ["a": 999],
                                     now: 1000)
         XCTAssertEqual(summary.accessibilityDescription,
-                       "1 Claude session needs you, longest 47s · 1 already opened")
+                       "1 agent session needs you, longest 47s · 1 already opened")
     }
 
     func testAccessibilityWhenEverythingHasBeenChecked() {
@@ -147,6 +147,6 @@ final class BadgeQueueTests: XCTestCase {
         let summary = StatusSummary(records: records, config: Config(), visits: ["a": 999],
                                     now: 1000)
         XCTAssertEqual(summary.accessibilityDescription,
-                       "No Claude sessions need you · 1 already opened")
+                       "No agent sessions need you · 1 already opened")
     }
 }

@@ -1,12 +1,13 @@
-.PHONY: install uninstall app build test check run clean help
+.PHONY: install uninstall app build test test-scripts check run clean help
 
 help:
-	@echo "ClaudeBar"
+	@echo "AgentSentinel"
 	@echo
 	@echo "  make install     build, install to /Applications, register hooks, start at login"
 	@echo "  make uninstall   remove the app, the login item and the hooks"
-	@echo "  make app         build ClaudeBar.app into ./build, without installing"
+	@echo "  make app         build AgentSentinel.app into ./build, without installing"
 	@echo "  make test        unit tests"
+	@echo "  make test-scripts  registrar tests (python)"
 	@echo "  make check       unit tests + the hook integration test"
 	@echo "  make run         run from source, without installing (development)"
 	@echo "  make clean       remove build artefacts"
@@ -27,11 +28,14 @@ build:
 	swift build -c release
 
 # Against a scratch state directory: some library code writes to the event log, and unit tests
-# have no business appending to the user's real ~/.claude/tnav.
+# have no business appending to the user's real state directory.
 test:
 	TNAV_STATE_DIR="$$(mktemp -d)" swift test
 
-check: test
+test-scripts:
+	python3 -m unittest discover -s scripts/hooks -t scripts
+
+check: test test-scripts
 	@./scripts/integration-test.sh
 
 # Development: run the menu bar app straight from .build. Note that macOS ties Accessibility
@@ -39,8 +43,8 @@ check: test
 # jumps quietly stop working — `make install` is the one that behaves consistently.
 run:
 	swift build
-	@pkill -f "\.build/.*/ClaudeBarApp" 2>/dev/null || true
-	@./.build/debug/ClaudeBarApp &
+	@pkill -f "\.build/.*/AgentSentinelApp" 2>/dev/null || true
+	@./.build/debug/AgentSentinelApp &
 	@echo "running from .build — see the menu bar"
 
 clean:

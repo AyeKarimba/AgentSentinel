@@ -40,6 +40,11 @@ public enum SessionState: String, Codable, Sendable {
 
 public struct SessionRecord: Codable, Equatable, Sendable {
     public var sessionId: String
+    /// Which agent this session belongs to. Absent in records written before 2.0, which
+    /// were all Claude's.
+    public var agent: AgentKind
+    /// Model name when the agent's payload states it (Codex does); nil otherwise.
+    public var model: String?
     public var tty: String
     public var pid: Int32
     public var cwd: String
@@ -62,6 +67,8 @@ public struct SessionRecord: Codable, Equatable, Sendable {
     public var lastAssistantMessage: String?
 
     public init(sessionId: String,
+                agent: AgentKind = .claude,
+                model: String? = nil,
                 tty: String,
                 pid: Int32,
                 cwd: String,
@@ -73,6 +80,8 @@ public struct SessionRecord: Codable, Equatable, Sendable {
                 escalated: Bool = false,
                 lastAssistantMessage: String? = nil) {
         self.sessionId = sessionId
+        self.agent = agent
+        self.model = model
         self.tty = tty
         self.pid = pid
         self.cwd = cwd
@@ -84,6 +93,29 @@ public struct SessionRecord: Codable, Equatable, Sendable {
         self.escalated = escalated
         self.lastAssistantMessage = lastAssistantMessage
     }
+
+    // Decoded by hand so a record from the 1.0.x build — no `agent`, no `model` — still loads
+    // as the Claude session it was, instead of failing and vanishing from the menu.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        sessionId = try c.decode(String.self, forKey: .sessionId)
+        agent = try c.decodeIfPresent(AgentKind.self, forKey: .agent) ?? .claude
+        model = try c.decodeIfPresent(String.self, forKey: .model)
+        tty = try c.decode(String.self, forKey: .tty)
+        pid = try c.decode(Int32.self, forKey: .pid)
+        cwd = try c.decode(String.self, forKey: .cwd)
+        state = try c.decode(SessionState.self, forKey: .state)
+        reason = try c.decodeIfPresent(WaitReason.self, forKey: .reason)
+        since = try c.decode(Double.self, forKey: .since)
+        reasonSince = try c.decodeIfPresent(Double.self, forKey: .reasonSince)
+        notified = try c.decodeIfPresent(Bool.self, forKey: .notified) ?? false
+        escalated = try c.decodeIfPresent(Bool.self, forKey: .escalated) ?? false
+        lastAssistantMessage = try c.decodeIfPresent(String.self, forKey: .lastAssistantMessage)
+    }
+
+    /// Filename stem for this record: `<agent>-<sessionId>`. Two agents can in principle hand
+    /// out the same id, and the prefix also makes a directory listing readable.
+    public var storageKey: String { "\(agent.rawValue)-\(sessionId)" }
 
     /// Derived rather than stored, so it can never drift from `cwd`.
     public var project: String {
@@ -100,10 +132,10 @@ public struct SessionRecord: Codable, Equatable, Sendable {
 
     public func elapsed(now: Double) -> Double { max(0, now - since) }
 
-    /// "MacTerminalNavigator — needs permission · 12s"
+    /// "MacTerminalNavigator (Codex) — needs permission · 12s"
     public func summary(now: Double) -> String {
         let detail = reason?.label ?? "working"
-        return "\(project) — \(detail) · \(Elapsed.short(elapsed(now: now)))"
+        return "\(project) (\(agent.displayName)) — \(detail) · \(Elapsed.short(elapsed(now: now)))"
     }
 
     /// Key used for tab-scoped mute: survives restarting Claude in the same tab and

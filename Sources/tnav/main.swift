@@ -7,10 +7,12 @@ func printErr(_ message: String) {
 }
 
 let usage = """
-tnav — route "Claude is waiting for you" to the right Terminal tab
+tnav — route "an agent is waiting for you" to the right Terminal tab
 
 USAGE
-  tnav hook                 Consume a Claude Code hook payload on stdin (always exits 0)
+  tnav hook --agent <kind> [--event <name>]
+                            Consume a hook payload on stdin for claude, codex, gemini or
+                            copilot (always exits 0; --agent defaults to claude)
   tnav jump <tty>           Focus the Terminal tab owning that tty
   tnav jump --oldest        Focus the longest-waiting session
   tnav list                 Show tracked sessions
@@ -28,7 +30,7 @@ let rest = Array(arguments.dropFirst())
 
 switch command {
 case "hook":
-    exit(HookCommand.run())
+    exit(HookCommand.run(rest))
 case "jump":
     exit(JumpCommand.run(rest))
 case "list":

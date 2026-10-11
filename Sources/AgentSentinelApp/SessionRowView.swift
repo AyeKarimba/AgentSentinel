@@ -35,6 +35,7 @@ final class SessionRowView: NSView {
     private let unseenDot = NSTextField(labelWithString: "")
     private let projectLabel = NSTextField(labelWithString: "")
     private let elapsedLabel = NSTextField(labelWithString: "")
+    private let agentLabel = NSTextField(labelWithString: "")
     private let detailLabel = NSTextField(labelWithString: "")
     private let snoozeIcon = NSImageView()
     private let muteIcon = NSImageView()
@@ -91,6 +92,15 @@ final class SessionRowView: NSView {
         elapsedLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         elapsedLabel.alignment = .right
 
+        // Two monospaced letters in the secondary colour: present enough to tell Codex from
+        // Claude at a glance, quiet enough that the project name stays the thing you read.
+        agentLabel.font = .monospacedSystemFont(ofSize: 10, weight: .semibold)
+        agentLabel.textColor = .secondaryLabelColor
+        // The tag keeps its width; a long project name truncates instead of squeezing it off.
+        agentLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        agentLabel.setContentHuggingPriority(.required, for: .horizontal)
+        projectLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
         detailLabel.font = .systemFont(ofSize: 11)
         detailLabel.lineBreakMode = .byTruncatingTail
 
@@ -98,7 +108,7 @@ final class SessionRowView: NSView {
         muteIcon.imageScaling = .scaleProportionallyDown
 
         let views: [NSView] = [statusDot, unseenDot, projectLabel, elapsedLabel,
-                               detailLabel, snoozeIcon, muteIcon]
+                               agentLabel, detailLabel, snoozeIcon, muteIcon]
         for view in views {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
@@ -111,7 +121,10 @@ final class SessionRowView: NSView {
             projectLabel.leadingAnchor.constraint(equalTo: statusDot.trailingAnchor, constant: 8),
             projectLabel.topAnchor.constraint(equalTo: topAnchor, constant: 6),
 
-            unseenDot.leadingAnchor.constraint(equalTo: projectLabel.trailingAnchor, constant: 5),
+            agentLabel.leadingAnchor.constraint(equalTo: projectLabel.trailingAnchor, constant: 6),
+            agentLabel.centerYAnchor.constraint(equalTo: projectLabel.centerYAnchor),
+
+            unseenDot.leadingAnchor.constraint(equalTo: agentLabel.trailingAnchor, constant: 5),
             unseenDot.centerYAnchor.constraint(equalTo: projectLabel.centerYAnchor),
             unseenDot.trailingAnchor.constraint(lessThanOrEqualTo: elapsedLabel.leadingAnchor,
                                                 constant: -8),
@@ -139,8 +152,9 @@ final class SessionRowView: NSView {
         applyContent()
     }
 
-    /// Prefers Claude's closing message — you can often answer it without switching tabs at
-    /// all. Falls back to the generic reason when there's no message or the option is off.
+    /// Leads with the agent, then its closing message — you can often answer that without
+    /// switching tabs at all. Falls back to the generic reason when there's no message or
+    /// the option is off.
     private func detailText() -> String {
         if let remaining = snoozeRemaining {
             return "snoozed \(Elapsed.short(remaining)) · \(deviceName)"
@@ -150,9 +164,17 @@ final class SessionRowView: NSView {
                .trimmingCharacters(in: .whitespacesAndNewlines)
                .replacingOccurrences(of: "\n", with: " "),
            !message.isEmpty {
-            return message
+            return "\(agentDescription) — \(message)"
         }
         return "\(record.reason?.label ?? "working") · \(deviceName)"
+    }
+
+    /// "codex · gpt-6-astra", or just "codex" when the payload never said which model.
+    private var agentDescription: String {
+        if let model = record.model, !model.isEmpty {
+            return "\(record.agent.rawValue) · \(model)"
+        }
+        return record.agent.rawValue
     }
 
     private var deviceName: String {
@@ -211,6 +233,8 @@ final class SessionRowView: NSView {
         statusDot.toolTip = tint.meaning
         projectLabel.stringValue = record.project
         projectLabel.font = .systemFont(ofSize: 13, weight: waiting ? .semibold : .regular)
+        agentLabel.stringValue = record.agent.tag
+        agentLabel.toolTip = record.model.map { "\(record.agent.displayName) · \($0)" } ?? record.agent.displayName
         elapsedLabel.stringValue = Elapsed.short(record.elapsed(now: now))
         elapsedLabel.toolTip = tint.meaning
 
@@ -244,6 +268,7 @@ final class SessionRowView: NSView {
             projectLabel.textColor = .selectedMenuItemTextColor
             detailLabel.textColor = .selectedMenuItemTextColor
             elapsedLabel.textColor = .selectedMenuItemTextColor
+            agentLabel.textColor = .selectedMenuItemTextColor
             statusDot.textColor = .selectedMenuItemTextColor
             unseenDot.textColor = .selectedMenuItemTextColor
             snoozeIcon.contentTintColor = .selectedMenuItemTextColor
@@ -252,11 +277,12 @@ final class SessionRowView: NSView {
             elapsedLabel.alphaValue = 0.85
         } else {
             // Name and time both carry the tint; the detail line deliberately does not. It is
-            // often a full sentence of Claude's, and colouring it too would turn the row into
+            // often a full sentence of the agent's, and colouring it too would turn the row into
             // a block of red rather than a signal you can pick out at a glance.
             projectLabel.textColor = tintTextColor
             elapsedLabel.textColor = tintTextColor
             detailLabel.textColor = .secondaryLabelColor
+            agentLabel.textColor = .secondaryLabelColor
             statusDot.textColor = tintColor
             unseenDot.textColor = .systemRed
             snoozeIcon.contentTintColor = snoozeRemaining != nil ? .systemOrange : .secondaryLabelColor
@@ -265,6 +291,7 @@ final class SessionRowView: NSView {
             elapsedLabel.alphaValue = 1
         }
         projectLabel.alphaValue = dimmed
+        agentLabel.alphaValue = dimmed
         statusDot.alphaValue = isSilenced ? 0.5 : 1
     }
 
@@ -323,6 +350,6 @@ final class SessionRowView: NSView {
             + " name=\(projectLabel.textColor?.colorNameForDump ?? "?")"
             + " time=\(elapsedLabel.textColor?.colorNameForDump ?? "?")"
             + " dot=\(statusDot.textColor?.colorNameForDump ?? "?")]"
-        return "\(statusDot.stringValue)\(unseen) \(name) \(elapsed) \(paint)  \(detailLabel.stringValue)   \(snooze) \(bell)"
+        return "\(statusDot.stringValue)\(unseen) \(name) \(agentLabel.stringValue) \(elapsed) \(paint)  \(detailLabel.stringValue)   \(snooze) \(bell)"
     }
 }

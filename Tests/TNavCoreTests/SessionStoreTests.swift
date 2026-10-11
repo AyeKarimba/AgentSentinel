@@ -27,7 +27,7 @@ final class SessionStoreTests: XCTestCase {
         let store = SessionStore(directory: directory)
         let original = record()
         try store.save(original)
-        XCTAssertEqual(store.load("s1"), original)
+        XCTAssertEqual(store.load(agent: .claude, sessionId: "s1"), original)
     }
 
     func testAllReadsEveryRecord() throws {
@@ -49,15 +49,15 @@ final class SessionStoreTests: XCTestCase {
     func testRemove() throws {
         let store = SessionStore(directory: directory)
         try store.save(record())
-        store.remove("s1")
-        XCTAssertNil(store.load("s1"))
+        store.remove(agent: .claude, sessionId: "s1")
+        XCTAssertNil(store.load(agent: .claude, sessionId: "s1"))
     }
 
     func testRemoveMissingOrUnsafeIdIsAQuietNoOp() throws {
         let store = SessionStore(directory: directory)
         try store.save(record())
-        store.remove("never-existed")
-        store.remove("../evil")
+        store.remove(agent: .claude, sessionId: "never-existed")
+        store.remove(agent: .claude, sessionId: "../evil")
         XCTAssertEqual(store.all().map(\.sessionId), ["s1"],
                        "a bad id must not throw, and must not delete anything")
     }
@@ -66,8 +66,8 @@ final class SessionStoreTests: XCTestCase {
         let store = SessionStore(directory: directory)
         try store.save(record(id: "s1"))
         try store.save(record(id: "s2"))
-        store.remove("s1")
-        XCTAssertNil(store.load("s1"))
+        store.remove(agent: .claude, sessionId: "s1")
+        XCTAssertNil(store.load(agent: .claude, sessionId: "s1"))
         XCTAssertEqual(store.all().map(\.sessionId), ["s2"])
     }
 
@@ -83,11 +83,11 @@ final class SessionStoreTests: XCTestCase {
 
     func testRejectsSessionIdsThatWouldEscapeTheDirectory() {
         let store = SessionStore(directory: directory)
-        XCTAssertNil(store.url(for: "../../etc/passwd"))
-        XCTAssertNil(store.url(for: "a/b"))
-        XCTAssertNil(store.url(for: ""))
-        XCTAssertNil(store.url(for: ".."))
-        XCTAssertNotNil(store.url(for: "9cf7abf1-94cb-4db1-912a-38247f0898b6"))
+        XCTAssertNil(store.url(agent: .claude, sessionId: "../../etc/passwd"))
+        XCTAssertNil(store.url(agent: .claude, sessionId: "a/b"))
+        XCTAssertNil(store.url(agent: .claude, sessionId: ""))
+        XCTAssertNil(store.url(agent: .claude, sessionId: ".."))
+        XCTAssertNotNil(store.url(agent: .claude, sessionId: "9cf7abf1-94cb-4db1-912a-38247f0898b6"))
     }
 
     func testSaveThrowsOnUnsafeSessionId() {
@@ -164,5 +164,82 @@ final class SessionStoreTests: XCTestCase {
         XCTAssertEqual(appleScriptLiteral(#"say "hi""#), #""say \"hi\"""#)
         XCTAssertEqual(appleScriptLiteral(#"back\slash"#), #""back\\slash""#)
         XCTAssertEqual(appleScriptLiteral("two\nlines"), #""two lines""#)
+    }
+
+    // MARK: - Agents
+
+    func testLegacyRecordDecodesAsClaude() throws {
+        // Exactly what the 1.0.1 build writes: no `agent`, no `model`.
+        let legacy = """
+        {"cwd":"/tmp/proj","escalated":false,"notified":false,"pid":100,"reason":"turn_complete",\
+        "sessionId":"s1","since":1000,"state":"waiting","tty":"/dev/ttys003"}
+        """
+        let record = try JSONDecoder().decode(SessionRecord.self, from: Data(legacy.utf8))
+        XCTAssertEqual(record.agent, .claude)
+        XCTAssertNil(record.model)
+        XCTAssertEqual(record.sessionId, "s1")
+    }
+
+    func testRecordRoundTripsAgentAndModel() throws {
+        var original = record(id: "c1")
+        original.agent = .codex
+        original.model = "gpt-6-astra"
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(SessionRecord.self, from: data)
+        XCTAssertEqual(decoded, original)
+        XCTAssertEqual(decoded.agent, .codex)
+        XCTAssertEqual(decoded.model, "gpt-6-astra")
+    }
+
+    func testStorageKeyIsAgentThenId() {
+        var r = record(id: "abc")
+        r.agent = .gemini
+        XCTAssertEqual(r.storageKey, "gemini-abc")
+    }
+
+    func testSaveWritesAgentPrefixedFileAndLoadFindsIt() throws {
+        let store = SessionStore(directory: directory)
+        var r = record(id: "s1")
+        r.agent = .codex
+        try store.save(r)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.appendingPathComponent("codex-s1.json").path))
+        XCTAssertEqual(store.load(agent: .codex, sessionId: "s1"), r)
+        XCTAssertNil(store.load(agent: .claude, sessionId: "s1"), "same id under another agent is a different record")
+    }
+
+    func testLoadFallsBackToBareLegacyFilenameForClaude() throws {
+        let legacy = """
+        {"cwd":"/tmp/proj","escalated":false,"notified":false,"pid":100,"reason":"turn_complete",\
+        "sessionId":"s1","since":1000,"state":"waiting","tty":"/dev/ttys003"}
+        """
+        try Data(legacy.utf8).write(to: directory.appendingPathComponent("s1.json"))
+        let store = SessionStore(directory: directory)
+        XCTAssertEqual(store.load(agent: .claude, sessionId: "s1")?.sessionId, "s1")
+        XCTAssertNil(store.load(agent: .codex, sessionId: "s1"), "legacy files are Claude's only")
+    }
+
+    func testSavingLegacyRecordRemovesBareFile() throws {
+        // Upgrade path: the first hook after upgrading rewrites the record under the new name;
+        // the old file must go or the menu shows the session twice.
+        let legacy = """
+        {"cwd":"/tmp/proj","escalated":false,"notified":false,"pid":100,"reason":"turn_complete",\
+        "sessionId":"s1","since":1000,"state":"waiting","tty":"/dev/ttys003"}
+        """
+        let bare = directory.appendingPathComponent("s1.json")
+        try Data(legacy.utf8).write(to: bare)
+        let store = SessionStore(directory: directory)
+        let loaded = try XCTUnwrap(store.load(agent: .claude, sessionId: "s1"))
+        try store.save(loaded)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: bare.path))
+        XCTAssertEqual(store.all().count, 1)
+    }
+
+    func testRemoveByAgentAndIdRemovesBothSpellings() throws {
+        let store = SessionStore(directory: directory)
+        try store.save(record(id: "s1"))                                  // claude-s1.json
+        try Data("{}".utf8).write(to: directory.appendingPathComponent("s1.json"))
+        store.remove(agent: .claude, sessionId: "s1")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: directory.appendingPathComponent("claude-s1.json").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: directory.appendingPathComponent("s1.json").path))
     }
 }
