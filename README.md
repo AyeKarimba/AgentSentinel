@@ -1,9 +1,9 @@
 # AgentSentinel
 
-A macOS menu bar app that tells you which CLI coding agent sessions are waiting on you, and
-takes you to the right terminal tab when you click one. Works with Claude Code, Codex CLI,
-Gemini CLI and Copilot CLI. An unofficial community tool, not affiliated with any of their
-makers. Formerly ClaudeBar, and before that TerminalNavigator.
+A macOS menu bar for your CLI coding agents — Claude Code, Codex CLI, Gemini CLI and
+Copilot CLI. It shows which sessions are waiting on you and takes you to the right terminal tab
+when you click one. An unofficial community tool, not affiliated with any of their makers.
+Formerly ClaudeBar, and before that TerminalNavigator.
 
 Run four agents in six tabs and the hard part stops being the work — it's noticing that one of
 them has been sitting on a permission prompt for ten minutes while you watched a different one
@@ -16,7 +16,7 @@ itself, so nobody has to memorise it:
 
 <img src="docs/legend.png" alt="The App Legend submenu, listing every colour and marker with its meaning" width="470">
 
-Colour answers *have you dealt with this*, not *what is it doing*:
+In short:
 
 | | |
 |---|---|
@@ -37,6 +37,9 @@ The icon follows the same scale, so a glance at the menu bar is enough:
 | orange `>_ 1 · 2m` | a tab has finished and is waiting on you |
 | red `>_ 2 · 4m` | a tab needs your permission |
 
+Each row also carries a two-letter tag for the agent — `CC` Claude Code, `CX` Codex, `GM`
+Gemini CLI, `CP` Copilot CLI — and the model name when the agent reports it.
+
 ## Requirements
 
 - macOS 13 or later
@@ -55,8 +58,7 @@ The icon follows the same scale, so a glance at the menu bar is enough:
 
 `make install` registers hooks for every agent whose config directory exists. Install another
 agent later and open **Diagnostics…** from the menu: it lists each agent's status and offers a
-button to register it. Each row shows a two-letter tag (`CC`, `CX`, `GM`, `CP`) and, when the
-agent reports it, the model.
+button to register it.
 
 Hermes Agent, OpenCode and Cursor CLI have hook systems too and are not yet supported; each is
 one adapter in `Sources/TNavCore/Agents/` plus one registrar in `scripts/hooks/`.
@@ -69,8 +71,9 @@ cd AgentSentinel
 make install
 ```
 
-That's it. It builds `AgentSentinel.app`, installs it to `/Applications`, registers the
-hooks for every agent it finds, starts it at login, and launches it. The `>_` icon appears in your menu bar.
+That's it. It builds `AgentSentinel.app`, installs it to `/Applications`, registers hooks
+with every agent it finds, starts it at login, and launches it. The `>_` icon appears in your
+menu bar.
 
 To remove everything again:
 
@@ -85,16 +88,17 @@ make uninstall
   not cosmetic: macOS ties Accessibility and Automation permission to a bundle identity, and a
   bare binary run out of `.build` gets a new identity on every rebuild — so permissions
   silently lapse.
-- Registers hooks with every agent found (Claude Code, Codex, Gemini CLI, Copilot CLI), merging
-  into each agent's config and backing it up first, pointing at the `tnav` inside the bundle.
-  It **merges**: any hooks you already have, including other tools' hooks on the same events,
-  are left alone, and re-running replaces its own entries rather than duplicating them.
+- Registers hooks with every agent found (Claude Code, Codex, Gemini CLI, Copilot CLI),
+  pointing at the `tnav` inside the bundle. It **merges**: any hooks you already have,
+  including other tools' hooks on the same events, are left alone; a backup is written beside
+  each config file, and re-running replaces its own entries rather than duplicating them.
 - Installs a LaunchAgent so it starts at login. Skip with `make install ARGS=--no-login`, or
   `./scripts/install.sh --no-login`.
 - Installs to `~/Applications` instead if `/Applications` isn't writable.
 
-`make uninstall` reverses all of it and leaves `~/Library/Application Support/AgentSentinel` in place so your mutes and
-snoozes survive a reinstall; `./scripts/uninstall.sh --purge` removes that too.
+`make uninstall` reverses all of it and leaves `~/Library/Application Support/AgentSentinel`
+in place so your mutes and snoozes survive a reinstall; `./scripts/uninstall.sh --purge`
+removes that too.
 </details>
 
 Already-running agent sessions appear at their next event — send a message in one and it
@@ -182,12 +186,12 @@ tnav resolve   # explain how this tab was identified (debugging)
 
 ## Troubleshooting
 
-Open **Diagnostics…** from the menu first — it reports whether each agent's hooks are registered and
-which focus backend is live, which covers most of these.
+Open **Diagnostics…** from the menu first — it reports whether each agent's hooks are
+registered and which focus backend is live, which covers most of these.
 
 | What you see | What it is |
 |---|---|
-| Nothing in the menu, ever | Hooks aren't registered for that agent. Diagnostics lists each agent; use its Register button or re-run `make install`. |
+| Nothing in the menu, ever | Hooks aren't registered. Diagnostics lists each agent's status; use its Register button or re-run `make install`. |
 | Codex sessions never appear | Codex skips hooks it has not been told to trust. Start `codex`, type `/hooks`, accept the AgentSentinel entries. |
 | Gemini hooks won't register | `~/.gemini/settings.json` may contain comments; this tool refuses files it cannot round-trip. Paste the snippet the installer prints, or remove the comments and re-run. |
 | A session you're already running doesn't appear | Expected. Records are created by hook events, so send a message in that tab and it shows up. New sessions appear immediately. |
@@ -225,8 +229,9 @@ Each agent's hooks fire on every session event, as `tnav hook --agent <kind>`. T
 that agent (`Sources/TNavCore/Agents/`) turns the payload into one of six normalized events;
 everything after that is agent-independent. `tnav` resolves which terminal tab the
 session belongs to by walking the process tree to its controlling TTY, then writes one JSON
-file per session under `~/Library/Application Support/AgentSentinel/sessions/`. Those files are the entire contract: the
-menu bar app can be closed, restarted or absent without state going wrong.
+file per session under `~/Library/Application Support/AgentSentinel/sessions/`. Those files
+are the entire contract: the menu bar app can be closed, restarted or absent without state
+going wrong.
 
 The app watches that directory, plus a Darwin notification the hook posts, plus a periodic
 reload for the things neither can see — a tab closed, a tab switched to by hand, a config edit
@@ -257,10 +262,10 @@ Three pieces, none of which touch the state machine or the UI:
 
 ```sh
 make test          # unit tests
-make test-scripts  # registrar tests
+make test-scripts  # registrar tests (python)
 make check         # both, plus the hook integration test
-make run         # run from source, without installing
-make app         # build the .app into ./build without installing
+make run           # run from source, without installing
+make app           # build the .app into ./build without installing
 make clean
 ```
 
@@ -272,9 +277,9 @@ consistently.
 Other tools:
 
 ```sh
-python3 scripts/verify-focus.py                   # does a jump switch desktop, or pull the window?
-./.build/debug/AgentSentinelApp --dump-menu   # render the menu as text
-swift scripts/make-icon.swift                     # regenerate Resources/AppIcon.icns
+python3 scripts/verify-focus.py              # does a jump switch desktop, or pull the window?
+./.build/debug/AgentSentinelApp --dump-menu  # render the menu as text
+swift scripts/make-icon.swift                # regenerate Resources/AppIcon.icns
 ```
 
 `--dump-menu` exists because an `NSStatusItem` menu can't be opened from another process via
@@ -300,7 +305,8 @@ even when run from inside an agent's own process tree; it is a test-only knob.
 
 Issues and pull requests welcome. Two things worth knowing before changing anything:
 
-- **`make check`** runs the unit tests plus a hook-to-menu integration test. `--dump-menu`
+- **`make check`** runs the unit tests, the registrar tests and a hook-to-menu integration
+  test. `--dump-menu`
   renders the menu as text, which is the only way to assert on it — an `NSStatusItem` menu
   can't be opened from another process.
 - **`docs/`** records why things are the way they are, including a correction where the
@@ -308,7 +314,8 @@ Issues and pull requests welcome. Two things worth knowing before changing anyth
   conclusions wrong, that's the most useful kind of contribution.
 
 Every terminal-specific call sits behind `TabController`, so iTerm2 or Ghostty support is one
-new conformance.
+new conformance; every agent-specific call sits behind `AgentAdapter`, so a new agent is one
+adapter plus one registrar — see [Adding an agent](#adding-an-agent).
 
 ## License
 
