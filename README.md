@@ -1,14 +1,15 @@
-# ClaudeBar
+# AgentSentinel
 
-A macOS menu bar app that tells you which Claude Code sessions are waiting on you, and takes
-you to the right terminal tab when you click one. An unofficial community tool, not
-affiliated with Anthropic. Formerly named TerminalNavigator.
+A macOS menu bar app that tells you which CLI coding agent sessions are waiting on you, and
+takes you to the right terminal tab when you click one. Works with Claude Code, Codex CLI,
+Gemini CLI and Copilot CLI. An unofficial community tool, not affiliated with any of their
+makers. Formerly ClaudeBar, and before that TerminalNavigator.
 
-Run Claude Code in six tabs and the hard part stops being the work — it's noticing that one of
+Run four agents in six tabs and the hard part stops being the work — it's noticing that one of
 them has been sitting on a permission prompt for ten minutes while you watched a different one
 think. This puts that in the menu bar.
 
-<img src="docs/screenshot.png" alt="ClaudeBar's menu: two tabs needing attention in red, one already-opened in grey, and one still working in purple" width="430">
+<img src="docs/screenshot.png" alt="AgentSentinel's menu: two tabs needing attention in red, one already-opened in grey, and one still working in purple" width="430">
 
 Colour answers *have you dealt with this*, not *what is it doing* — and the menu explains
 itself, so nobody has to memorise it:
@@ -22,7 +23,7 @@ Colour answers *have you dealt with this*, not *what is it doing*:
 | **red** | needs your permission — you haven't opened it yet |
 | **orange** | finished its turn — you haven't opened it yet |
 | **grey** | you've opened it; still waiting on your reply |
-| **purple** | Claude is working; nothing is needed from you |
+| **purple** | an agent is working; nothing is needed from you |
 
 Open a tab and its row goes quiet — the badge moves to the next one, and disappears once
 nothing is left waiting on you.
@@ -31,7 +32,7 @@ The icon follows the same scale, so a glance at the menu bar is enough:
 
 | Icon | Meaning |
 |---|---|
-| grey `>_` | no Claude sessions at all |
+| grey `>_` | no agent sessions at all |
 | purple `>_ 3` | 3 tabs working; nothing wants you |
 | orange `>_ 1 · 2m` | a tab has finished and is waiting on you |
 | red `>_ 2 · 4m` | a tab needs your permission |
@@ -40,19 +41,36 @@ The icon follows the same scale, so a glance at the menu bar is enough:
 
 - macOS 13 or later
 - Terminal.app (iTerm2, Ghostty and others aren't supported yet — see [Adding a terminal](#adding-a-terminal))
-- [Claude Code](https://claude.com/claude-code)
+- At least one of: Claude Code, Codex CLI, Gemini CLI, Copilot CLI
 - Swift 5.9+ toolchain (Xcode or Command Line Tools)
+
+## Agents
+
+| Agent | How it's wired | Verified live |
+|---|---|---|
+| Claude Code | hooks in `~/.claude/settings.json` | yes |
+| Codex CLI | hooks in `~/.codex/hooks.json` — after installing, start `codex`, type `/hooks` and accept the AgentSentinel entries, or they are silently skipped | yes |
+| Gemini CLI | hooks in `~/.gemini/settings.json` | not yet — hooks are registered from the documented payload shape; please report what you see |
+| Copilot CLI | `~/.copilot/hooks/agentsentinel.json` | not yet — same |
+
+`make install` registers hooks for every agent whose config directory exists. Install another
+agent later and open **Diagnostics…** from the menu: it lists each agent's status and offers a
+button to register it. Each row shows a two-letter tag (`CC`, `CX`, `GM`, `CP`) and, when the
+agent reports it, the model.
+
+Hermes Agent, OpenCode and Cursor CLI have hook systems too and are not yet supported; each is
+one adapter in `Sources/TNavCore/Agents/` plus one registrar in `scripts/hooks/`.
 
 ## Install
 
 ```sh
-git clone https://github.com/AyeKarimba/ClaudeBar.git
-cd ClaudeBar
+git clone https://github.com/AyeKarimba/AgentSentinel.git
+cd AgentSentinel
 make install
 ```
 
-That's it. It builds `ClaudeBar.app`, installs it to `/Applications`, registers the
-Claude Code hooks, starts it at login, and launches it. The `>_` icon appears in your menu bar.
+That's it. It builds `AgentSentinel.app`, installs it to `/Applications`, registers the
+hooks for every agent it finds, starts it at login, and launches it. The `>_` icon appears in your menu bar.
 
 To remove everything again:
 
@@ -67,19 +85,19 @@ make uninstall
   not cosmetic: macOS ties Accessibility and Automation permission to a bundle identity, and a
   bare binary run out of `.build` gets a new identity on every rebuild — so permissions
   silently lapse.
-- Adds six hooks to `~/.claude/settings.json`, pointing at the `tnav` inside the bundle.
+- Registers hooks with every agent found (Claude Code, Codex, Gemini CLI, Copilot CLI), merging
+  into each agent's config and backing it up first, pointing at the `tnav` inside the bundle.
   It **merges**: any hooks you already have, including other tools' hooks on the same events,
-  are left alone. A backup is written to `settings.json.tnav-backup`, and re-running replaces
-  its own entries rather than duplicating them.
+  are left alone, and re-running replaces its own entries rather than duplicating them.
 - Installs a LaunchAgent so it starts at login. Skip with `make install ARGS=--no-login`, or
   `./scripts/install.sh --no-login`.
 - Installs to `~/Applications` instead if `/Applications` isn't writable.
 
-`make uninstall` reverses all of it and leaves `~/.claude/tnav` in place so your mutes and
+`make uninstall` reverses all of it and leaves `~/Library/Application Support/AgentSentinel` in place so your mutes and
 snoozes survive a reinstall; `./scripts/uninstall.sh --purge` removes that too.
 </details>
 
-Already-running Claude Code sessions appear at their next event — send a message in one and it
+Already-running agent sessions appear at their next event — send a message in one and it
 shows up. New sessions appear immediately.
 
 ### Permissions
@@ -164,12 +182,13 @@ tnav resolve   # explain how this tab was identified (debugging)
 
 ## Troubleshooting
 
-Open **Diagnostics…** from the menu first — it reports whether the hooks are registered and
+Open **Diagnostics…** from the menu first — it reports whether each agent's hooks are registered and
 which focus backend is live, which covers most of these.
 
 | What you see | What it is |
 |---|---|
-| Nothing in the menu, ever | Hooks aren't registered. Diagnostics will say so; re-run `make install`. |
+| Nothing in the menu, ever | Hooks aren't registered for that agent. Diagnostics lists each agent; use its Register button or re-run `make install`. |
+| Codex sessions never appear | Codex skips hooks it has not been told to trust. Start `codex`, type `/hooks`, accept the AgentSentinel entries. |
 | A session you're already running doesn't appear | Expected. Records are created by hook events, so send a message in that tab and it shows up. New sessions appear immediately. |
 | "Could not switch to that tab" | Automation permission for Terminal was denied. System Settings → Privacy & Security → Automation. |
 | Jumping brings the window to you instead of switching desktop | A macOS limitation, not a bug — see [above](#known-limitation-other-desktops). |
@@ -179,36 +198,40 @@ which focus backend is live, which covers most of these.
 
 ## What it touches
 
-Worth being explicit, because this reads what Claude says.
+Worth being explicit, because this reads what your agents say.
 
-**Reads** the hook payload Claude Code hands it: session id, working directory, event name,
-notification type, and the assistant's closing message. It never opens the transcript file, even
-though the payload includes its path.
+**Reads** the hook payload each agent hands it: session id, working directory, event name,
+permission message, and the agent's closing message when the agent includes it. It never opens a
+transcript file.
 
-**Writes** to `~/.claude/tnav/` only — one JSON file per session, plus `config.json`,
-`visits.json`, `alerts.json` and `events.log`. Installing also adds six hook entries to
-`~/.claude/settings.json`, merging rather than replacing, with a backup alongside.
+**Writes** to `~/Library/Application Support/AgentSentinel/` only — one JSON file per session,
+plus `config.json`, `visits.json`, `alerts.json` and `events.log`. Installing also adds hook
+entries to each detected agent's config file, merging rather than replacing, with a backup
+alongside. On first launch after upgrading from ClaudeBar, state is copied from `~/.claude/tnav`;
+the old directory is left in place until `uninstall.sh --purge`.
 
 **Sends nothing anywhere.** There is no networking code in the repo — no `URLSession`, no
 sockets. Verifiable in one grep.
 
-Claude's closing message is stored in the session file and shown in the menu row (the banner
+The agent's closing message is stored in the session file and shown in the menu row (the banner
 shows only the project name and what happened).
-If you'd rather it weren't, turn off **Show Claude's last message**; the rows fall back to a
+If you'd rather it weren't, turn off **Show the agent's last message**; the rows fall back to a
 generic reason like "needs permission". `./scripts/uninstall.sh --purge` removes the state directory entirely.
 
 ## How it works
 
-Claude Code hooks fire on every session event. `tnav hook` resolves which terminal tab the
+Each agent's hooks fire on every session event, as `tnav hook --agent <kind>`. The adapter for
+that agent (`Sources/TNavCore/Agents/`) turns the payload into one of six normalized events;
+everything after that is agent-independent. `tnav` resolves which terminal tab the
 session belongs to by walking the process tree to its controlling TTY, then writes one JSON
-file per session under `~/.claude/tnav/sessions/`. Those files are the entire contract: the
+file per session under `~/Library/Application Support/AgentSentinel/sessions/`. Those files are the entire contract: the
 menu bar app can be closed, restarted or absent without state going wrong.
 
 The app watches that directory, plus a Darwin notification the hook posts, plus a periodic
 reload for the things neither can see — a tab closed, a tab switched to by hand, a config edit
 from another process. End to end, a hook event reaches the menu in about 12ms.
 
-`tab.tty` is the join key between a Claude session and a Terminal tab. It survives everything a
+`tab.tty` is the join key between an agent session and a Terminal tab. It survives everything a
 window title doesn't.
 
 ### Adding a terminal
@@ -217,11 +240,24 @@ Every terminal-specific call sits behind the `TabController` protocol
 (`Sources/TNavCore/TabController.swift`). iTerm2 or Ghostty support means one new conformance;
 the hook, state and UI layers don't change.
 
+### Adding an agent
+
+Three pieces, none of which touch the state machine or the UI:
+
+1. An `AgentAdapter` conformance in `Sources/TNavCore/Agents/` mapping the agent's events to
+   `AgentEvent` (session start, prompt submitted, tool starting, turn complete, needs
+   permission, session end). Add it to `AgentRegistry` and `AgentKind.known`.
+2. A process signature in `AgentKind.signature` so the hook can find the agent in its own
+   ancestry — the binary name, or the package path fragment for a Node program.
+3. A registrar module in `scripts/hooks/` that merges `tnav hook --agent <kind>` into the
+   agent's config, plus the matching `HookRegistration` entries for Diagnostics.
+
 ## Development
 
 ```sh
-make test        # 148 unit tests
-make check       # unit tests + the hook integration test
+make test          # unit tests
+make test-scripts  # registrar tests
+make check         # both, plus the hook integration test
 make run         # run from source, without installing
 make app         # build the .app into ./build without installing
 make clean
@@ -236,7 +272,7 @@ Other tools:
 
 ```sh
 python3 scripts/verify-focus.py                   # does a jump switch desktop, or pull the window?
-./.build/debug/ClaudeBarApp --dump-menu   # render the menu as text
+./.build/debug/AgentSentinelApp --dump-menu   # render the menu as text
 swift scripts/make-icon.swift                     # regenerate Resources/AppIcon.icns
 ```
 
@@ -247,7 +283,9 @@ Accessibility, so it's the only way to assert on what the menu actually shows.
 original version only checked the tab became frontmost, which is true either way, and that gap
 hid the limitation above for some time.
 
-Set `TNAV_STATE_DIR` to point any binary at a scratch state directory.
+Set `TNAV_STATE_DIR` to point any binary at a scratch state directory. The integration test
+exports `TNAV_HOOK_IGNORE_ANCESTRY_MISMATCH=1` so its canned per-agent payloads are accepted
+even when run from inside an agent's own process tree; it is a test-only knob.
 
 ## Design notes
 
@@ -255,6 +293,7 @@ Set `TNAV_STATE_DIR` to point any binary at a scratch state directory.
   measured rather than assumed
 - [`docs/phase1-spaces-finding.md`](docs/phase1-spaces-finding.md) — the Spaces investigation,
   including a correction to its own earlier conclusion
+- [`docs/superpowers/specs/2026-10-10-multi-agent-design.md`](docs/superpowers/specs/2026-10-10-multi-agent-design.md) — the multi-agent design, with the per-agent feasibility table
 
 ## Contributing
 

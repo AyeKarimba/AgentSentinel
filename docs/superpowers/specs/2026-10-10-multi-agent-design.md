@@ -1,7 +1,7 @@
 # Multi-agent support and rename to AgentSentinel — design
 
 **Date:** 2026-10-10
-**Status:** approved
+**Status:** approved; implemented by docs/superpowers/plans/2026-10-10-multi-agent.md
 
 ## Problem
 
