@@ -92,11 +92,12 @@ final class SessionRowView: NSView {
         elapsedLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         elapsedLabel.alignment = .right
 
-        // Two monospaced letters in the secondary colour: present enough to tell Codex from
-        // Claude at a glance, quiet enough that the project name stays the thing you read.
-        agentLabel.font = .monospacedSystemFont(ofSize: 10, weight: .semibold)
+        // The agent's name, smaller and in the secondary colour: present enough to tell Codex
+        // from Claude at a glance, quiet enough that the project name stays the thing you read.
+        agentLabel.font = .systemFont(ofSize: 11, weight: .medium)
         agentLabel.textColor = .secondaryLabelColor
-        // The tag keeps its width; a long project name truncates instead of squeezing it off.
+        // The agent name keeps its width; a long project name truncates instead of squeezing
+        // it off.
         agentLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
         agentLabel.setContentHuggingPriority(.required, for: .horizontal)
         projectLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
@@ -152,9 +153,10 @@ final class SessionRowView: NSView {
         applyContent()
     }
 
-    /// Leads with the agent, then its closing message — you can often answer that without
-    /// switching tabs at all. Falls back to the generic reason when there's no message or
-    /// the option is off.
+    /// The agent's closing message — you can often answer that without switching tabs at
+    /// all — led by the model when the agent reports one. The agent itself is already named
+    /// on the line above. Falls back to the generic reason when there's no message or the
+    /// option is off.
     private func detailText() -> String {
         if let remaining = snoozeRemaining {
             return "snoozed \(Elapsed.short(remaining)) · \(deviceName)"
@@ -164,17 +166,12 @@ final class SessionRowView: NSView {
                .trimmingCharacters(in: .whitespacesAndNewlines)
                .replacingOccurrences(of: "\n", with: " "),
            !message.isEmpty {
-            return "\(agentDescription) — \(message)"
+            if let model = record.model, !model.isEmpty {
+                return "\(model) — \(message)"
+            }
+            return message
         }
         return "\(record.reason?.label ?? "working") · \(deviceName)"
-    }
-
-    /// "codex · gpt-6-astra", or just "codex" when the payload never said which model.
-    private var agentDescription: String {
-        if let model = record.model, !model.isEmpty {
-            return "\(record.agent.rawValue) · \(model)"
-        }
-        return record.agent.rawValue
     }
 
     private var deviceName: String {
@@ -233,7 +230,7 @@ final class SessionRowView: NSView {
         statusDot.toolTip = tint.meaning
         projectLabel.stringValue = record.project
         projectLabel.font = .systemFont(ofSize: 13, weight: waiting ? .semibold : .regular)
-        agentLabel.stringValue = record.agent.tag
+        agentLabel.stringValue = record.agent.shortName
         agentLabel.toolTip = record.model.map { "\(record.agent.displayName) · \($0)" } ?? record.agent.displayName
         elapsedLabel.stringValue = Elapsed.short(record.elapsed(now: now))
         elapsedLabel.toolTip = tint.meaning

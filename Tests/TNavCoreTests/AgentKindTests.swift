@@ -2,24 +2,24 @@ import XCTest
 @testable import TNavCore
 
 final class AgentKindTests: XCTestCase {
-    func testKnownKindsHaveDistinctTagsAndNames() {
-        let tags = AgentKind.known.map(\.tag)
-        XCTAssertEqual(Set(tags).count, tags.count, "two agents must never share a row tag")
+    func testKnownKindsHaveDistinctNames() {
+        let names = AgentKind.known.map(\.shortName)
+        XCTAssertEqual(Set(names).count, names.count, "two agents must never share a row label")
         XCTAssertEqual(AgentKind.claude.displayName, "Claude Code")
         XCTAssertEqual(AgentKind.codex.displayName, "Codex")
         XCTAssertEqual(AgentKind.gemini.displayName, "Gemini CLI")
         XCTAssertEqual(AgentKind.copilot.displayName, "Copilot CLI")
-        XCTAssertEqual(AgentKind.claude.tag, "CC")
-        XCTAssertEqual(AgentKind.codex.tag, "CX")
-        XCTAssertEqual(AgentKind.gemini.tag, "GM")
-        XCTAssertEqual(AgentKind.copilot.tag, "CP")
+        XCTAssertEqual(AgentKind.claude.shortName, "Claude")
+        XCTAssertEqual(AgentKind.codex.shortName, "Codex")
+        XCTAssertEqual(AgentKind.gemini.shortName, "Gemini")
+        XCTAssertEqual(AgentKind.copilot.shortName, "Copilot")
     }
 
-    func testUnknownKindStillHasAUsableTagAndName() {
+    func testUnknownKindStillHasAUsableName() {
         // A record from a newer build must render, not crash the menu.
         let future = AgentKind(rawValue: "hermes")
         XCTAssertEqual(future.displayName, "hermes")
-        XCTAssertEqual(future.tag, "HE")
+        XCTAssertEqual(future.shortName, "Hermes")
         XCTAssertNil(future.configDirectoryName)
     }
 
