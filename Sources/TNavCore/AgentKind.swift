@@ -30,15 +30,16 @@ public struct AgentKind: RawRepresentable, Codable, Hashable, Sendable {
         }
     }
 
-    /// Two-letter label shown on each row. Unknown kinds use the first two letters of
-    /// their raw value, uppercased, so they still read as *something*.
-    public var tag: String {
+    /// The agent's name as shown after the project on each row: short enough to sit beside
+    /// it, plain enough to need no legend. Unknown kinds use their raw value, capitalised,
+    /// so a record from a newer build still says what it is.
+    public var shortName: String {
         switch self {
-        case .claude: return "CC"
-        case .codex: return "CX"
-        case .gemini: return "GM"
-        case .copilot: return "CP"
-        default: return String(rawValue.prefix(2)).uppercased()
+        case .claude: return "Claude"
+        case .codex: return "Codex"
+        case .gemini: return "Gemini"
+        case .copilot: return "Copilot"
+        default: return rawValue.prefix(1).uppercased() + rawValue.dropFirst()
         }
     }
 

@@ -37,8 +37,8 @@ enum ListCommand {
             if let reason = describe(decision) { notes.append(reason) }
 
             let suffix = notes.isEmpty ? "" : "  [\(notes.joined(separator: ", "))]"
-            let tag = record.agent.tag
-            print("\(marker)\(unseen) \(record.tty)  \(tag)  \(record.summary(now: now))\(suffix)")
+            // The summary already names the agent, "web-dashboard (Claude Code) — …".
+            print("\(marker)\(unseen) \(record.tty)  \(record.summary(now: now))\(suffix)")
         }
         return 0
     }

@@ -14,7 +14,7 @@ think. This puts that in the menu bar.
 Colour answers *have you dealt with this*, not *what is it doing* — and the menu explains
 itself, so nobody has to memorise it:
 
-<img src="docs/legend.png" alt="The App Legend submenu: the colour of each row, the menu bar icon states, the two-letter agent tags, and the row buttons" width="470">
+<img src="docs/legend.png" alt="The App Legend submenu: the colour of each row, the menu bar icon states, and the row buttons" width="470">
 
 In short:
 
@@ -37,8 +37,8 @@ The icon follows the same scale, so a glance at the menu bar is enough:
 | orange `>_ 1 · 2m` | a tab has finished and is waiting on you |
 | red `>_ 2 · 4m` | a tab needs your permission |
 
-Each row also carries a two-letter tag for the agent — `CC` Claude Code, `CX` Codex, `GM`
-Gemini CLI, `CP` Copilot CLI — and the model name when the agent reports it.
+Each row names its agent after the project — Claude, Codex, Gemini or Copilot — and leads
+the closing message with the model when the agent reports one.
 
 ## Requirements
 
@@ -252,7 +252,8 @@ Three pieces, none of which touch the state machine or the UI:
 
 1. An `AgentAdapter` conformance in `Sources/TNavCore/Agents/` mapping the agent's events to
    `AgentEvent` (session start, prompt submitted, tool starting, turn complete, needs
-   permission, session end). Add it to `AgentRegistry` and `AgentKind.known`.
+   permission, session end). Add it to `AgentRegistry` and `AgentKind.known`, with the
+   `displayName` and the `shortName` the menu row shows.
 2. A process signature in `AgentKind.signature` so the hook can find the agent in its own
    ancestry — the binary name, or the package path fragment for a Node program.
 3. A registrar module in `scripts/hooks/` that merges `tnav hook --agent <kind>` into the

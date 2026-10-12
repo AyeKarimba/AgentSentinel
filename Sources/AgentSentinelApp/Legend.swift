@@ -197,11 +197,6 @@ enum Legend {
         menu.addItem(sample("●", "", "Unopened request in a muted or snoozed tab",
                             color: RowTint.urgent.color))
 
-        menu.addItem(.separator())
-        menu.addItem(heading("The two letters after each project name"))
-        for kind in AgentKind.known {
-            menu.addItem(sample(kind.tag, "", kind.displayName, color: .secondaryLabelColor))
-        }
 
         menu.addItem(.separator())
         menu.addItem(heading("The buttons on each row"))
